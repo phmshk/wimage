@@ -66,7 +66,7 @@ Resource-intensive algorithms requiring sorting or statistical analysis of local
 
 ## Project Architecture
 
-The project follows a "Lite" Feature-Sliced Design (FSD) methodology:
+The project follows a Feature-Sliced Design (FSD) methodology:
 
 * `app/`: Global configuration and providers.
 * `pages/`: Application views (Main Editor).
@@ -99,3 +99,4 @@ The project follows a "Lite" Feature-Sliced Design (FSD) methodology:
 Start the development server:
 ```bash
 bun dev
+
