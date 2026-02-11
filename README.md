@@ -85,8 +85,8 @@ The project follows a Feature-Sliced Design (FSD) methodology:
 
 1.  Clone the repository:
     ```bash
-    git clone [https://github.com/your-username/project-name.git](https://github.com/your-username/project-name.git)
-    cd project-name
+    git clone https://github.com/phmshk/wimage.git
+    cd wimage
     ```
 
 2.  Install dependencies using Bun:
@@ -99,4 +99,5 @@ The project follows a Feature-Sliced Design (FSD) methodology:
 Start the development server:
 ```bash
 bun dev
+
 
