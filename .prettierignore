@@ -1,0 +1,15 @@
+dist/
+node_modules/
+.bundle/
+
+bun.lockb
+
+*.log
+coverage/
+.nyc_output/
+
+.DS_Store
+.env
+.env.*
+
+public/
