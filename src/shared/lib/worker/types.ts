@@ -2,8 +2,21 @@
 const WorkerActions = ["init", "apply_filter", "ping"] as const;
 export type WorkerActionType = (typeof WorkerActions)[number];
 
+const FilterNames = [
+  "grayscale",
+  "inversion",
+  "sepia",
+  "gaussian-blur",
+  "sobel",
+  "sharpen",
+  "median",
+  "kuwahara",
+  "bilateral",
+] as const;
+export type FilterType = (typeof FilterNames)[number];
+
 export interface FilterPayload {
-  filterName: string;
+  filterName: FilterType;
   options?: Record<string, number>;
   width: number;
   height: number;

@@ -1,8 +1,8 @@
 import type {
+  WorkerResponse,
   FilterPayload,
   WorkerRequest,
-  WorkerResponse,
-} from "@/shared/lib/worker/types";
+} from "@/shared/lib/worker";
 
 export class WorkerHost {
   private worker: Worker | null = null;

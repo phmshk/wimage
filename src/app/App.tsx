@@ -1,5 +1,5 @@
 import { workerHost } from "@/entities/worker/WorkerHost";
-import type { FilterPayload } from "@/shared/lib/worker/types";
+import type { FilterPayload } from "@/shared/lib/worker";
 import { useEffect } from "react";
 
 function App() {

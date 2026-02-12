@@ -17,10 +17,10 @@ This project is currently under active development.
   - [ ] Create main layout and canvas component
   - [x] Implement Web Worker infrastructure with Transferable Objects
 
-- [ ] **JavaScript Algorithms (Phase 1)**
-  - [ ] Level 1: Invert, Grayscale, Sepia
-  - [ ] Level 2: Gaussian Blur, Sobel, Sharpen
-  - [ ] Level 3: Median, Kuwahara, Bilateral
+- [x] **JavaScript Algorithms (Phase 1)**
+  - [x] Level 1: Invert, Grayscale, Sepia
+  - [x] Level 2: Gaussian Blur, Sobel, Sharpen
+  - [x] Level 3: Median, Kuwahara, Bilateral
 
 - [ ] **WASM Integration (Phase 2)**
   - [ ] Docker environment for Emscripten
