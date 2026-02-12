@@ -43,27 +43,32 @@ self.onmessage = (e: MessageEvent<WorkerRequest>) => {
             break;
           }
           case "gaussian-blur": {
-            applyGaussianBlur(resultBuffer, width, height, options);
+            resultBuffer = applyGaussianBlur(
+              resultBuffer,
+              width,
+              height,
+              options
+            );
             break;
           }
           case "sobel": {
-            applySobel(resultBuffer, width, height);
+            resultBuffer = applySobel(resultBuffer, width, height);
             break;
           }
           case "sharpen": {
-            applySharpen(resultBuffer, width, height);
+            resultBuffer = applySharpen(resultBuffer, width, height);
             break;
           }
           case "median": {
-            applyMedian(resultBuffer, width, height, options);
+            resultBuffer = applyMedian(resultBuffer, width, height, options);
             break;
           }
           case "kuwahara": {
-            applyKuwahara(resultBuffer, width, height, options);
+            resultBuffer = applyKuwahara(resultBuffer, width, height, options);
             break;
           }
           case "bilateral": {
-            applyBilateral(resultBuffer, width, height, options);
+            resultBuffer = applyBilateral(resultBuffer, width, height, options);
             break;
           }
           default:

@@ -1,3 +1,5 @@
+import type { FilterOptions } from "../image-processing";
+
 // eslint-disable-next-line
 const WorkerActions = ["init", "apply_filter", "ping"] as const;
 export type WorkerActionType = (typeof WorkerActions)[number];
@@ -17,7 +19,7 @@ export type FilterType = (typeof FilterNames)[number];
 
 export interface FilterPayload {
   filterName: FilterType;
-  options?: Record<string, number>;
+  options?: FilterOptions;
   width: number;
   height: number;
 }

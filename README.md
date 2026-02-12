@@ -12,9 +12,9 @@ This project is currently under active development.
 
 - [x] **Project Initialization**
 
-- [ ] **Core Architecture (Phase 1)**
+- [x] **Core Architecture (Phase 1)**
   - [x] Implement Feature-Sliced Design structure
-  - [ ] Create main layout and canvas component
+  - [x] Create main layout and canvas component
   - [x] Implement Web Worker infrastructure with Transferable Objects
 
 - [x] **JavaScript Algorithms (Phase 1)**

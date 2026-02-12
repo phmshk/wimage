@@ -1,24 +1,35 @@
-import { workerHost } from "@/entities/worker/WorkerHost";
-import type { FilterPayload } from "@/shared/lib/worker";
-import { useEffect } from "react";
+import { ImageUpload } from "@/features/image-upload";
+import { ControlPanel } from "@/widgets/control-panel";
+import { CanvasArea } from "@/widgets/workarea";
 
 function App() {
-  const payload: FilterPayload = { filterName: "name", height: 10, width: 10 };
+  return (
+    <main className="flex min-h-screen w-full flex-col lg:h-screen lg:flex-row lg:overflow-hidden ">
+      <div className="grid grid-cols-1 lg:grid-cols-4 w-full h-full p-4 gap-4">
+        <div className="lg:col-span-3 rounded-xl flex items-center justify-center overflow-auto min-h-100">
+          <div className="max-w-full max-h-full p-4">
+            <CanvasArea />
+          </div>
+        </div>
 
-  useEffect(() => {
-    const test = async () => {
-      try {
-        const imageData = new Uint8ClampedArray(1024);
-        const data = await workerHost.processImage(imageData, payload);
-        console.log(data);
-      } catch (e) {
-        console.log("From App", e);
-      }
-    };
+        <div className="lg:col-span-1 flex flex-col gap-4 overflow-y-auto pr-1 custom-scrollbar">
+          <div className="p-4 rounded-xl ">
+            <h3 className="text-sm font-semibold mb-3 uppercase tracking-wider">
+              Image Upload
+            </h3>
+            <ImageUpload />
+          </div>
 
-    test();
-  }, []);
-  return <h1>WImage</h1>;
+          <div className="p-4 rounded-xl flex-1">
+            <h3 className="text-sm font-semibold mb-3 uppercase tracking-wider">
+              Filters
+            </h3>
+            <ControlPanel />
+          </div>
+        </div>
+      </div>
+    </main>
+  );
 }
 
 export default App;
