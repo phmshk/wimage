@@ -8,6 +8,8 @@ The application allows users to upload images and apply various filters—rangin
 
 This project is currently under active development.
 
+Live demo can be viewed here:  **[\[ Live Demo \]](https://phmshk.github.io/wimage/)**
+
 **Current Focus:** Phase 1 - JavaScript Implementation and Architecture.
 
 - [x] **Project Initialization**
@@ -110,3 +112,4 @@ bun dev
 
 
 ```
+
