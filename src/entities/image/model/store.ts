@@ -55,24 +55,34 @@ export const useImageStore = create<ImageState>()(
           }
         );
 
-        if (response.success && response.buffer) {
+        if (response.success && response.buffer && response.type === "done") {
           set({
             status: "idle",
             currData: response.buffer,
             lastMetrics: response.metrics,
+            lastChunk: null,
           });
         } else {
           throw new Error(response.error);
         }
       } catch (e) {
-        set({ status: "error", error: (e as Error).message, progress: 0 });
+        set({
+          status: "error",
+          error: (e as Error).message,
+          progress: 0,
+          lastChunk: null,
+        });
       }
     },
 
     reset: () => {
       const { originalData } = get();
       if (originalData) {
-        set({ currData: new Uint8ClampedArray(originalData), error: null });
+        set({
+          currData: new Uint8ClampedArray(originalData),
+          error: null,
+          lastChunk: null,
+        });
       }
     },
   }))
