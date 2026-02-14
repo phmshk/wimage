@@ -1,5 +1,6 @@
 import { useImageActions } from "@/entities/image";
 import { Button } from "@/shared/ui/components/ui/button";
+import { Upload } from "lucide-react";
 import type { ChangeEvent } from "react";
 
 export const ImageUpload = () => {
@@ -31,19 +32,20 @@ export const ImageUpload = () => {
   };
 
   return (
-    <div className="flex gap-2 items-center">
-      <label htmlFor="upload" className="cursor-pointer">
-        <Button variant="outline" asChild>
-          <span>Upload Image</span>
-        </Button>
-      </label>
+    <>
       <input
-        id="upload"
+        id="image-upload"
         type="file"
         accept="image/*"
         className="hidden"
         onChange={handleFile}
       />
-    </div>
+      <Button variant="default" className="w-full" asChild>
+        <label htmlFor="image-upload" className="cursor-pointer">
+          <Upload className="mr-2 h-4 w-4" />
+          Upload Image
+        </label>
+      </Button>
+    </>
   );
 };

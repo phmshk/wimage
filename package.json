@@ -15,6 +15,7 @@
     "@babel/core": "^7.29.0",
     "@babel/parser": "^7.29.0",
     "@eslint-community/regexpp": "^4.12.2",
+    "@fontsource-variable/jetbrains-mono": "^5.2.8",
     "@tailwindcss/vite": "^4.1.18",
     "@typescript-eslint/parser": "^8.55.0",
     "@typescript-eslint/scope-manager": "^8.55.0",

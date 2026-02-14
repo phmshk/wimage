@@ -1,4 +1,6 @@
 import { useCurrData, useImageInfo, useImageStore } from "@/entities/image";
+import { cn } from "@/shared/lib/utils";
+import { ImageIcon } from "lucide-react";
 import { useEffect, useRef } from "react";
 
 export const CanvasArea = () => {
@@ -42,14 +44,32 @@ export const CanvasArea = () => {
     return () => unsub();
   }, [canvasRef.current]);
 
-  if (!imgInfo) return <div className="text-gray-400">No image loaded</div>;
+  if (!imgInfo) {
+    return (
+      <div className="flex h-full w-full flex-col items-center justify-center gap-4 rounded-xl border-2 border-dashed border-muted-foreground/25 bg-muted/50 p-12 text-muted-foreground">
+        <div className="rounded-full bg-background p-4 shadow-sm">
+          <ImageIcon className="h-8 w-8 opacity-50" />
+        </div>
+        <div className="text-center">
+          <h3 className="text-lg font-semibold">No image loaded</h3>
+          <p className="text-sm text-muted-foreground">
+            Upload an image from the sidebar to start editing
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="relative w-full h-150 bg-gray-100 flex items-center justify-center overflow-hidden border rounded-lg">
+    <div className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-lg border bg-background shadow-sm">
       <canvas
         ref={canvasRef}
         width={imgInfo.width}
         height={imgInfo.height}
-        className="max-w-full max-h-full object-contain shadow-lg"
+        className={cn(
+          "max-h-full max-w-full object-contain",
+          "animate-in fade-in zoom-in-95 duration-300"
+        )}
       />
     </div>
   );
