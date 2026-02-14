@@ -1,11 +1,10 @@
-import { useCurrData, useImageInfo, useImageStatus } from "@/entities/image";
+import { useCurrData, useImageInfo, useImageStore } from "@/entities/image";
 import { useEffect, useRef } from "react";
 
 export const CanvasArea = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const currentData = useCurrData();
   const imgInfo = useImageInfo();
-  const status = useImageStatus();
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -23,17 +22,29 @@ export const CanvasArea = () => {
     context.putImageData(imageData, 0, 0);
   }, [currentData, imgInfo]);
 
+  useEffect(() => {
+    const context = canvasRef.current?.getContext("2d");
+    if (!context) return;
+    const unsub = useImageStore.subscribe(
+      (state) => state.lastChunk,
+      (chunk) => {
+        if (chunk) {
+          const imgData = new ImageData(
+            chunk.data as unknown as ImageDataArray,
+            chunk.width,
+            chunk.height
+          );
+          context.putImageData(imgData, chunk.x, chunk.y);
+        }
+      }
+    );
+
+    return () => unsub();
+  }, [canvasRef.current]);
+
   if (!imgInfo) return <div className="text-gray-400">No image loaded</div>;
   return (
     <div className="relative w-full h-150 bg-gray-100 flex items-center justify-center overflow-hidden border rounded-lg">
-      {status === "processing" && (
-        <div className="absolute inset-0 bg-black/20 flex items-center justify-center z-10 backdrop-blur-[1px]">
-          <span className="text-white font-bold animate-pulse">
-            Processing...
-          </span>
-        </div>
-      )}
-
       <canvas
         ref={canvasRef}
         width={imgInfo.width}

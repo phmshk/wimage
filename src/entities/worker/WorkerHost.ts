@@ -3,12 +3,14 @@ import type {
   FilterPayload,
   WorkerRequest,
 } from "@/shared/lib/worker";
+import type { ChunkData } from "@/shared/lib/worker/types";
 
 export class WorkerHost {
   private worker: Worker | null = null;
   private pendingRequests = new Map<
     string,
     {
+      onProgress?: (chunk: ChunkData) => void;
       resolve: (res: WorkerResponse) => void;
       reject: (reason: unknown) => void;
     }
@@ -37,15 +39,27 @@ export class WorkerHost {
   }
 
   private handleMessage(event: MessageEvent<WorkerResponse>) {
-    const { id, success, error } = event.data;
+    const { id, success, type, error, chunk } = event.data;
     const request = this.pendingRequests.get(id);
 
-    if (request) {
-      if (success) {
-        request.resolve(event.data);
-      } else {
-        request.reject(new Error(error || "Unknown worker error"));
+    if (!request) return;
+
+    if (!success) {
+      request.reject(new Error(error || "Unknown worker error"));
+      this.pendingRequests.delete(id);
+      this.currentRequestId = null;
+      return;
+    }
+
+    if (type === "processing") {
+      if (request.onProgress && chunk) {
+        request.onProgress(chunk);
       }
+      return;
+    }
+
+    if (type === "done") {
+      request.resolve(event.data);
       this.pendingRequests.delete(id);
       this.currentRequestId = null;
     }
@@ -59,7 +73,8 @@ export class WorkerHost {
 
   public processImage(
     imageData: Uint8ClampedArray,
-    payload: FilterPayload
+    payload: FilterPayload,
+    onProgress?: (chunk: ChunkData) => void
   ): Promise<WorkerResponse> {
     return new Promise((resolve, reject) => {
       const id = crypto.randomUUID();
@@ -69,7 +84,7 @@ export class WorkerHost {
       }
 
       this.currentRequestId = id;
-      this.pendingRequests.set(id, { resolve, reject });
+      this.pendingRequests.set(id, { resolve, reject, onProgress });
 
       const request: WorkerRequest = {
         id,

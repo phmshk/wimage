@@ -1,5 +1,6 @@
 import { ImageUpload } from "@/features/image-upload";
 import { ControlPanel } from "@/widgets/control-panel";
+import { ImageProcessingProgress } from "@/widgets/progress-visualizer";
 import { CanvasArea } from "@/widgets/workarea";
 
 function App() {
@@ -13,6 +14,7 @@ function App() {
         </div>
 
         <div className="lg:col-span-1 flex flex-col gap-4 overflow-y-auto pr-1 custom-scrollbar">
+          <ImageProcessingProgress />
           <div className="p-4 rounded-xl ">
             <h3 className="text-sm font-semibold mb-3 uppercase tracking-wider">
               Image Upload

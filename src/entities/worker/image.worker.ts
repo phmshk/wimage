@@ -10,100 +10,210 @@ import {
   applySobel,
 } from "@/shared/lib/image-processing";
 import type { WorkerRequest, WorkerResponse } from "@/shared/lib/worker";
+import { applyFilterAndCrop, getChunkWithPadding } from "./model/helpers";
+import {
+  PX_SIZE,
+  CHUNK_HEIGHT,
+  CHUNK_WIDTH,
+  CHUNK_PADDING,
+} from "./model/constants";
 
 self.onmessage = (e: MessageEvent<WorkerRequest>) => {
   const { id, type, buffer, payload } = e.data;
   const start = performance.now();
 
   try {
-    let resultBuffer = buffer;
+    if (type === "init") return;
 
-    switch (type) {
-      case "init": {
-        break;
-      }
-      case "apply_filter": {
-        if (!resultBuffer || !payload) {
-          throw new Error("No buffer or payload provided");
-        }
-
-        const { filterName, width, height, options } = payload;
-
-        switch (filterName) {
-          case "grayscale": {
-            applyGrayscale(resultBuffer, width, height);
-            break;
-          }
-          case "inversion": {
-            applyInversion(resultBuffer, width, height);
-            break;
-          }
-          case "sepia": {
-            applySepia(resultBuffer, width, height);
-            break;
-          }
-          case "gaussian-blur": {
-            resultBuffer = applyGaussianBlur(
-              resultBuffer,
-              width,
-              height,
-              options
-            );
-            break;
-          }
-          case "sobel": {
-            resultBuffer = applySobel(resultBuffer, width, height);
-            break;
-          }
-          case "sharpen": {
-            resultBuffer = applySharpen(resultBuffer, width, height);
-            break;
-          }
-          case "median": {
-            resultBuffer = applyMedian(resultBuffer, width, height, options);
-            break;
-          }
-          case "kuwahara": {
-            resultBuffer = applyKuwahara(resultBuffer, width, height, options);
-            break;
-          }
-          case "bilateral": {
-            resultBuffer = applyBilateral(resultBuffer, width, height, options);
-            break;
-          }
-          default:
-            throw new Error(`Unknown filter: ${filterName}`);
-        }
-        break;
-      }
-      case "ping": {
-        self.postMessage({ id, success: true } as WorkerResponse);
-        console.log("pong");
-        break;
-      }
-      default: {
-        throw new Error(`Unknown action type: ${type}`);
-      }
+    if (type === "ping") {
+      self.postMessage({ id, success: true } as WorkerResponse);
+      return;
     }
 
-    const end = performance.now();
+    if (type === "apply_filter") {
+      if (!buffer || !payload) {
+        throw new Error("No buffer or payload provided");
+      }
 
-    const response: WorkerResponse = {
-      id,
-      success: true,
-      buffer: resultBuffer,
-      metrics: { computeTime: end - start },
-    };
+      const { filterName, width, height, options } = payload;
 
-    const transfer: Transferable[] = resultBuffer ? [resultBuffer.buffer] : [];
-    self.postMessage(response, { transfer });
+      const finalBuffer = new Uint8ClampedArray(width * height * PX_SIZE);
+      const padding = options?.radius
+        ? Math.ceil(options.radius)
+        : CHUNK_PADDING;
+      const totalChunks =
+        Math.ceil(width / CHUNK_WIDTH) * Math.ceil(height / CHUNK_HEIGHT);
+      let processedChunks = 0;
+
+      for (let y = 0; y < height; y += CHUNK_HEIGHT) {
+        for (let x = 0; x < width; x += CHUNK_WIDTH) {
+          const currChunkWidth = Math.min(CHUNK_WIDTH, width - x);
+          const currChunkHeight = Math.min(CHUNK_HEIGHT, height - y);
+
+          const paddedChunk = getChunkWithPadding(
+            x,
+            y,
+            width,
+            height,
+            buffer,
+            currChunkWidth,
+            currChunkHeight,
+            padding
+          );
+
+          let resultChunk: Uint8ClampedArray;
+
+          switch (filterName) {
+            case "grayscale":
+              resultChunk = applyFilterAndCrop(
+                paddedChunk,
+                applyGrayscale,
+                currChunkWidth,
+                currChunkHeight,
+                padding,
+                options
+              );
+              break;
+            case "inversion":
+              resultChunk = applyFilterAndCrop(
+                paddedChunk,
+                applyInversion,
+                currChunkWidth,
+                currChunkHeight,
+                padding,
+                options
+              );
+              break;
+            case "sepia":
+              resultChunk = applyFilterAndCrop(
+                paddedChunk,
+                applySepia,
+                currChunkWidth,
+                currChunkHeight,
+                padding,
+                options
+              );
+              break;
+            case "gaussian-blur":
+              resultChunk = applyFilterAndCrop(
+                paddedChunk,
+                applyGaussianBlur,
+                currChunkWidth,
+                currChunkHeight,
+                padding,
+                options
+              );
+              break;
+            case "sobel":
+              resultChunk = applyFilterAndCrop(
+                paddedChunk,
+                applySobel,
+                currChunkWidth,
+                currChunkHeight,
+                padding,
+                options
+              );
+              break;
+            case "sharpen":
+              resultChunk = applyFilterAndCrop(
+                paddedChunk,
+                applySharpen,
+
+                currChunkWidth,
+                currChunkHeight,
+                padding,
+                options
+              );
+              break;
+            case "median":
+              resultChunk = applyFilterAndCrop(
+                paddedChunk,
+                applyMedian,
+                currChunkWidth,
+                currChunkHeight,
+                padding,
+                options
+              );
+              break;
+            case "kuwahara":
+              resultChunk = applyFilterAndCrop(
+                paddedChunk,
+                applyKuwahara,
+                currChunkWidth,
+                currChunkHeight,
+                padding,
+                options
+              );
+              break;
+            case "bilateral":
+              resultChunk = applyFilterAndCrop(
+                paddedChunk,
+                applyBilateral,
+                currChunkWidth,
+                currChunkHeight,
+                padding,
+                options
+              );
+              break;
+            default:
+              throw new Error(`Unknown filter: ${filterName}`);
+          }
+
+          for (let cy = 0; cy < currChunkHeight; cy++) {
+            const destStart = ((y + cy) * width + x) * PX_SIZE;
+            const srcStart = cy * currChunkWidth * PX_SIZE;
+            const rowBytes = currChunkWidth * PX_SIZE;
+
+            finalBuffer.set(
+              resultChunk.subarray(srcStart, srcStart + rowBytes),
+              destStart
+            );
+          }
+
+          const transfer: Transferable[] = resultChunk
+            ? [resultChunk.buffer]
+            : [];
+
+          processedChunks++;
+
+          const response: WorkerResponse = {
+            id,
+            success: true,
+            type: "processing",
+            chunk: {
+              data: resultChunk,
+              width: currChunkWidth,
+              height: currChunkHeight,
+              x,
+              y,
+              progress: { processed: processedChunks, total: totalChunks },
+            },
+          };
+          if (processedChunks % 5 === 0 || processedChunks === totalChunks) {
+            self.postMessage(response, { transfer });
+          }
+        }
+      }
+
+      const end = performance.now();
+
+      const response: WorkerResponse = {
+        id,
+        type: "done",
+        success: true,
+        buffer: finalBuffer,
+        metrics: { computeTime: end - start },
+      };
+
+      const transfer: Transferable[] = finalBuffer ? [finalBuffer.buffer] : [];
+
+      self.postMessage(response, { transfer });
+    }
   } catch (e) {
-    const response: WorkerResponse = {
+    self.postMessage({
       id,
       success: false,
       error: e instanceof Error ? e.message : "Unknown error",
-    };
-
-    self.postMessage(response);
+    } as WorkerResponse);
   }
 };
