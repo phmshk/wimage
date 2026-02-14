@@ -3,7 +3,7 @@ import {
   useProcessingProgress,
 } from "@/entities/image/model/store";
 import { Progress } from "@/shared/ui/components/ui/progress";
-import { Loader, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 export const ImageProcessingProgress = () => {
   const progress = useProcessingProgress();

@@ -42,7 +42,7 @@ export const CanvasArea = () => {
     );
 
     return () => unsub();
-  }, [canvasRef.current]);
+  }, []);
 
   if (!imgInfo) {
     return (
