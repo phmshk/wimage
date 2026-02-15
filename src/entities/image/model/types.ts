@@ -21,4 +21,5 @@ export interface ImageState {
     options?: FilterOptions
   ) => Promise<void>;
   reset: () => void;
+  cancelProcessing: () => void;
 }

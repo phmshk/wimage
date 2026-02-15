@@ -101,8 +101,29 @@ export const useImageStore = create<ImageState>()(
           currData: new Uint8ClampedArray(originalData),
           error: null,
           lastChunk: null,
+          progress: 0,
+          lastMetrics: null,
         });
       }
+    },
+
+    cancelProcessing: () => {
+      const { status } = get();
+      if (status !== "processing") return;
+
+      workerHost.terminate();
+
+      set({
+        status: "idle",
+        progress: 0,
+        lastChunk: null,
+      });
+
+      notify.warning(
+        "Canceled",
+        "Operation was aborted by user. Filter was only partially applied! Reset image to its original state.",
+        8000
+      );
     },
   }))
 );
@@ -123,5 +144,6 @@ export const useImageActions = () =>
       setImage: state.setImage,
       applyFilter: state.applyFilter,
       reset: state.reset,
+      cancelProcessing: state.cancelProcessing,
     }))
   );

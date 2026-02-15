@@ -2,6 +2,7 @@ import {
   useImageStatus,
   useProcessingProgress,
 } from "@/entities/image/model/store";
+import { StopFilter } from "@/features/stop-filter";
 import { Progress } from "@/shared/ui/components/ui/progress";
 import { Loader2 } from "lucide-react";
 
@@ -24,6 +25,9 @@ export const ImageProcessingProgress = () => {
       </div>
 
       <Progress value={progress} className="h-2 w-full" />
+      <div className="mt-2 self-start">
+        <StopFilter />
+      </div>
     </div>
   );
 };
