@@ -9,6 +9,8 @@ import { Button } from "@/shared/ui/components/ui/button";
 import { Play, RotateCcw } from "lucide-react";
 import { useState } from "react";
 import { FilterControl } from "./FilterControl";
+import { FILTER_DESCRIPTIONS } from "../model/filters-info";
+import { FilterInfo } from "./FilterInfo";
 
 export const ControlPanel = () => {
   const { applyFilter, reset } = useImageActions();
@@ -41,39 +43,58 @@ export const ControlPanel = () => {
           !hasImage && "opacity-40 grayscale pointer-events-none"
         )}
       >
-        {/* Light Filters */}
         <div className="space-y-3">
           <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Basic Adjustments
           </h4>
           <div className="grid grid-cols-3 gap-2">
-            <Button
-              disabled={isDisabled}
-              variant="outline"
-              onClick={() => applyFilter("grayscale")}
-              size="sm"
-              className="text-xs"
-            >
-              Gray
-            </Button>
-            <Button
-              disabled={isDisabled}
-              variant="outline"
-              onClick={() => applyFilter("inversion")}
-              size="sm"
-              className="text-xs"
-            >
-              Invert
-            </Button>
-            <Button
-              disabled={isDisabled}
-              variant="outline"
-              onClick={() => applyFilter("sepia")}
-              size="sm"
-              className="text-xs"
-            >
-              Sepia
-            </Button>
+            {/* Grayscale */}
+            <div className="flex flex-col gap-1">
+              <Button
+                disabled={isDisabled}
+                variant="outline"
+                onClick={() => applyFilter("grayscale")}
+                size="sm"
+                className="text-xs w-full"
+              >
+                Gray
+              </Button>
+              <div className="flex justify-center">
+                <FilterInfo text={FILTER_DESCRIPTIONS.grayscale} />
+              </div>
+            </div>
+
+            {/* Invert */}
+            <div className="flex flex-col gap-1">
+              <Button
+                disabled={isDisabled}
+                variant="outline"
+                onClick={() => applyFilter("inversion")}
+                size="sm"
+                className="text-xs w-full"
+              >
+                Invert
+              </Button>
+              <div className="flex justify-center">
+                <FilterInfo text={FILTER_DESCRIPTIONS.inversion} />
+              </div>
+            </div>
+
+            {/* Sepia */}
+            <div className="flex flex-col gap-1">
+              <Button
+                disabled={isDisabled}
+                variant="outline"
+                onClick={() => applyFilter("sepia")}
+                size="sm"
+                className="text-xs w-full"
+              >
+                Sepia
+              </Button>
+              <div className="flex justify-center">
+                <FilterInfo text={FILTER_DESCRIPTIONS.sepia} />
+              </div>
+            </div>
           </div>
         </div>
 
@@ -86,6 +107,7 @@ export const ControlPanel = () => {
           {/* Gaussian Blur */}
           <FilterControl
             label="Gaussian Blur"
+            description={FILTER_DESCRIPTIONS.gaussianBlur}
             value={blurRadius}
             onValueChange={setBlurRadius}
             min={1}
@@ -99,7 +121,10 @@ export const ControlPanel = () => {
 
           {/* Sharpen */}
           <div className="flex items-center justify-between gap-2">
-            <span className="text-sm font-medium">Sharpen</span>
+            <div className="flex items-center">
+              <span className="text-sm font-medium">Sharpen</span>
+              <FilterInfo text={FILTER_DESCRIPTIONS.sharpen} />
+            </div>
             <Button
               disabled={isDisabled}
               variant="secondary"
@@ -113,7 +138,10 @@ export const ControlPanel = () => {
 
           {/* Sobel */}
           <div className="flex items-center justify-between gap-2">
-            <span className="text-sm font-medium">Sobel Detection</span>
+            <div className="flex items-center">
+              <span className="text-sm font-medium">Sobel Detection</span>
+              <FilterInfo text={FILTER_DESCRIPTIONS.sobel} />
+            </div>
             <Button
               disabled={isDisabled}
               variant="secondary"
@@ -132,8 +160,10 @@ export const ControlPanel = () => {
             Non-Linear / Heavy
           </h4>
 
+          {/* Median */}
           <FilterControl
             label="Median"
+            description={FILTER_DESCRIPTIONS.median}
             value={medianRadius}
             onValueChange={setMedianRadius}
             min={1}
@@ -143,8 +173,10 @@ export const ControlPanel = () => {
             isDisabled={isDisabled}
           />
 
+          {/* Kuwahara */}
           <FilterControl
             label="Kuwahara (Oil Painting)"
+            description={FILTER_DESCRIPTIONS.kuwahara}
             value={kuwaharaRadius}
             onValueChange={setKuwaharaRadius}
             min={2}
@@ -156,8 +188,10 @@ export const ControlPanel = () => {
             isDisabled={isDisabled}
           />
 
+          {/* Bilateral */}
           <FilterControl
             label="Bilateral"
+            description={FILTER_DESCRIPTIONS.bilateral}
             value={bilateralRadius}
             onValueChange={setBilateralRadius}
             min={1}

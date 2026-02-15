@@ -1,5 +1,6 @@
 import { Button } from "@/shared/ui/components/ui/button";
 import { Slider } from "@/shared/ui/components/ui/slider";
+import { FilterInfo } from "./FilterInfo";
 
 interface FilterControlProps {
   label: string;
@@ -10,24 +11,30 @@ interface FilterControlProps {
   step?: number;
   onApply: () => void;
   isDisabled: boolean;
+  description?: string;
 }
 
-export const FilterControl = ({
-  label,
-  value,
-  onValueChange,
-  min,
-  max,
-  step = 1,
-  onApply,
-  isDisabled,
-}: FilterControlProps) => {
+export const FilterControl = (props: FilterControlProps) => {
+  const {
+    label,
+    value,
+    onValueChange,
+    min,
+    max,
+    step = 1,
+    onApply,
+    isDisabled,
+    description,
+  } = props;
   return (
     <div className="space-y-3 rounded-lg border bg-card/50 p-3">
       <div className="flex items-center justify-between">
-        <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-          {label}
-        </label>
+        <div className="flex items-center">
+          <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+            {label}
+          </label>
+          {description && <FilterInfo text={description} />}
+        </div>
         <span className="w-8 text-right font-mono text-xs text-muted-foreground">
           {value[0]}
         </span>
