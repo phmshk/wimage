@@ -1,5 +1,6 @@
 import type { FilterOptions } from "@/shared/lib/image-processing";
 import type { FilterType } from "@/shared/lib/worker";
+import type { ChunkData } from "@/shared/lib/worker/types";
 
 export interface ImageState {
   status: "idle" | "loading" | "processing" | "error" | "no_img";
@@ -8,13 +9,7 @@ export interface ImageState {
   originalData: Uint8ClampedArray | null;
   currData: Uint8ClampedArray | null;
 
-  lastChunk: {
-    data: Uint8ClampedArray;
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-  } | null;
+  lastChunk: ChunkData | null;
   progress: number;
 
   lastMetrics: { computeTime: number } | null;

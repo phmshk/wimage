@@ -33,7 +33,7 @@ export const useImageStore = create<ImageState>()(
       if (status === "processing") return;
       if (!currData || !info) return;
 
-      set({ status: "processing", error: null, progress: 0 });
+      set({ status: "processing", error: null, progress: 0, lastChunk: null });
 
       try {
         const payload: FilterPayload = {
@@ -48,10 +48,15 @@ export const useImageStore = create<ImageState>()(
           imageData,
           payload,
           (chunk: ChunkData) => {
+            const currentProgress = get().progress;
             const percentage = Math.round(
               (chunk.progress.processed / chunk.progress.total) * 100
             );
-            set({ lastChunk: chunk, progress: percentage });
+            if (percentage !== currentProgress) {
+              set({ lastChunk: chunk, progress: percentage });
+            } else {
+              set({ lastChunk: chunk });
+            }
           }
         );
 

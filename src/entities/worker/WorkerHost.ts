@@ -40,6 +40,7 @@ export class WorkerHost {
 
   private handleMessage(event: MessageEvent<WorkerResponse>) {
     const { id, success, type, error, chunk } = event.data;
+
     const request = this.pendingRequests.get(id);
 
     if (!request) return;

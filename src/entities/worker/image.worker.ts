@@ -189,9 +189,7 @@ self.onmessage = (e: MessageEvent<WorkerRequest>) => {
               progress: { processed: processedChunks, total: totalChunks },
             },
           };
-          if (processedChunks % 5 === 0 || processedChunks === totalChunks) {
-            self.postMessage(response, { transfer });
-          }
+          self.postMessage(response, { transfer });
         }
       }
 

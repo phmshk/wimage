@@ -27,6 +27,7 @@ export const CanvasArea = () => {
   useEffect(() => {
     const context = canvasRef.current?.getContext("2d");
     if (!context) return;
+
     const unsub = useImageStore.subscribe(
       (state) => state.lastChunk,
       (chunk) => {
@@ -42,7 +43,7 @@ export const CanvasArea = () => {
     );
 
     return () => unsub();
-  }, []);
+  }, [imgInfo]);
 
   if (!imgInfo) {
     return (
