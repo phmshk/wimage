@@ -19,11 +19,17 @@ export const useImageStore = create<ImageState>()(
     error: null,
     lastChunk: null,
     progress: 0,
+    isModified: false,
 
-    setImage: (data: Uint8ClampedArray, width: number, height: number) =>
+    setImage: (
+      data: Uint8ClampedArray,
+      width: number,
+      height: number,
+      filename: string
+    ) =>
       set({
         status: "idle",
-        info: { width, height },
+        info: { width, height, filename },
         originalData: data,
         currData: new Uint8ClampedArray(data),
         error: null,
@@ -38,7 +44,13 @@ export const useImageStore = create<ImageState>()(
       if (status === "processing") return;
       if (!currData || !info) return;
 
-      set({ status: "processing", error: null, progress: 0, lastChunk: null });
+      set({
+        status: "processing",
+        error: null,
+        progress: 0,
+        lastChunk: null,
+        isModified: true,
+      });
 
       try {
         const payload: FilterPayload = {
@@ -103,6 +115,7 @@ export const useImageStore = create<ImageState>()(
           lastChunk: null,
           progress: 0,
           lastMetrics: null,
+          isModified: false,
         });
       }
     },
@@ -137,6 +150,7 @@ export const useImageError = () => useImageStore((state) => state.error);
 export const useMetrics = () => useImageStore((state) => state.lastMetrics);
 export const useProcessingProgress = () =>
   useImageStore((state) => state.progress);
+export const useIsModified = () => useImageStore((state) => state.isModified);
 
 export const useImageActions = () =>
   useImageStore(

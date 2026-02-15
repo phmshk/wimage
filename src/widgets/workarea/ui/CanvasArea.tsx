@@ -1,47 +1,68 @@
-import { useCurrData, useImageInfo, useImageStore } from "@/entities/image";
+import {
+  useCurrData,
+  useImageInfo,
+  useImageStore,
+  useIsModified,
+  useOriginalData,
+} from "@/entities/image";
 import { cn } from "@/shared/lib/utils";
-import { ImageIcon } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { Button } from "@/shared/ui/components/ui/button";
+import { Eye, EyeOff, ImageIcon } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { drawToCanvas } from "../model/helpers";
 
 export const CanvasArea = () => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const processedRef = useRef<HTMLCanvasElement>(null);
+  const originalRef = useRef<HTMLCanvasElement>(null);
+
   const currentData = useCurrData();
+  const originalData = useOriginalData();
   const imgInfo = useImageInfo();
 
+  const [showOriginal, setShowOriginal] = useState(false);
+  const isModified = useIsModified();
+
+  // processed canvas
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas || !currentData || !imgInfo) return;
-
-    const context = canvas.getContext("2d");
-    if (!context) return;
-
-    const imageData = new ImageData(
-      currentData as unknown as ImageDataArray,
-      imgInfo.width,
-      imgInfo.height
-    );
-
-    context.putImageData(imageData, 0, 0);
+    if (processedRef.current && imgInfo && currentData) {
+      drawToCanvas(
+        processedRef.current,
+        currentData,
+        imgInfo.width,
+        imgInfo.height
+      );
+    }
   }, [currentData, imgInfo]);
 
+  // original canvas
   useEffect(() => {
-    const context = canvasRef.current?.getContext("2d");
-    if (!context) return;
+    if (originalRef.current && imgInfo && originalData) {
+      drawToCanvas(
+        originalRef.current,
+        originalData,
+        imgInfo.width,
+        imgInfo.height
+      );
+    }
+  }, [originalData, imgInfo]);
 
+  // chunks handling
+  useEffect(() => {
     const unsub = useImageStore.subscribe(
       (state) => state.lastChunk,
       (chunk) => {
-        if (chunk) {
-          const imgData = new ImageData(
-            chunk.data as unknown as ImageDataArray,
+        if (chunk && processedRef.current) {
+          drawToCanvas(
+            processedRef.current,
+            chunk.data,
             chunk.width,
-            chunk.height
+            chunk.height,
+            chunk.x,
+            chunk.y
           );
-          context.putImageData(imgData, chunk.x, chunk.y);
         }
       }
     );
-
     return () => unsub();
   }, [imgInfo]);
 
@@ -62,16 +83,57 @@ export const CanvasArea = () => {
   }
 
   return (
-    <div className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-lg border bg-background shadow-sm">
-      <canvas
-        ref={canvasRef}
-        width={imgInfo.width}
-        height={imgInfo.height}
-        className={cn(
-          "max-h-full max-w-full object-contain",
-          "animate-in fade-in zoom-in-95 duration-300"
-        )}
-      />
+    <div className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-lg border bg-background/50 backdrop-blur-sm shadow-sm md:p-4">
+      {isModified && (
+        <div className="absolute top-4 right-4 z-50 flex flex-col items-end gap-2">
+          <Button
+            variant="secondary"
+            size="icon"
+            className={cn(
+              "h-10 w-10 rounded-full shadow-md transition-transform active:scale-95 touch-none",
+              showOriginal &&
+                "bg-primary text-primary-foreground hover:bg-primary/90"
+            )}
+            onPointerDown={() => setShowOriginal(true)}
+            onPointerUp={() => setShowOriginal(false)}
+            onPointerLeave={() => setShowOriginal(false)}
+            title="Hold to see original"
+          >
+            {showOriginal ? (
+              <Eye className="h-5 w-5" />
+            ) : (
+              <EyeOff className="h-5 w-5" />
+            )}
+          </Button>
+        </div>
+      )}
+      <div
+        className="relative h-full w-full max-h-full max-w-full"
+        style={{ aspectRatio: `${imgInfo.width} / ${imgInfo.height}` }}
+      >
+        {/* original */}
+        <canvas
+          ref={originalRef}
+          className="absolute inset-0 h-full w-full object-contain"
+          width={imgInfo.width}
+          height={imgInfo.height}
+        />
+
+        {/* processed */}
+        <canvas
+          ref={processedRef}
+          className={cn(
+            "absolute inset-0 h-full w-full object-contain transition-opacity duration-200 ease-in-out",
+            showOriginal ? "opacity-0" : "opacity-100"
+          )}
+          width={imgInfo.width}
+          height={imgInfo.height}
+        />
+
+        <div className="absolute top-4 left-4 z-40 rounded bg-black/60 px-2 py-1 text-xs font-bold text-white backdrop-blur-md animate-in fade-in zoom-in-95 duration-200 pointer-events-none">
+          {!isModified || showOriginal ? "ORIGINAL" : "FILTER"}
+        </div>
+      </div>
     </div>
   );
 };

@@ -7,4 +7,5 @@ export {
   useImageStatus,
   useMetrics,
   useOriginalData,
+  useIsModified,
 } from "./model/store.ts";

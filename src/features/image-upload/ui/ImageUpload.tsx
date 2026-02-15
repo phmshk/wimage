@@ -11,6 +11,8 @@ export const ImageUpload = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    const fileNameWithoutExt = file.name.replace(/\.[^/.]+$/, "");
+
     e.target.value = "";
 
     const img = new Image();
@@ -27,7 +29,7 @@ export const ImageUpload = () => {
       context.drawImage(img, 0, 0);
       try {
         const imgData = context.getImageData(0, 0, img.width, img.height);
-        setImage(imgData.data, img.width, img.height);
+        setImage(imgData.data, img.width, img.height, fileNameWithoutExt);
       } catch (err) {
         notify.error("Failed to get image data", err);
       } finally {
