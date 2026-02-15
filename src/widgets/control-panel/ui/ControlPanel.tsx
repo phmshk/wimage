@@ -4,7 +4,7 @@ import {
   useImageStatus,
   useCurrData,
 } from "@/entities/image";
-import { cn } from "@/shared/lib/utils";
+import { cn, formatTime } from "@/shared/lib/utils";
 import { Button } from "@/shared/ui/components/ui/button";
 import { Play, RotateCcw } from "lucide-react";
 import { useState } from "react";
@@ -24,11 +24,6 @@ export const ControlPanel = () => {
   const [medianRadius, setMedianRadius] = useState([3]);
   const [kuwaharaRadius, setKuwaharaRadius] = useState([3]);
   const [bilateralRadius, setBilateralRadius] = useState([10]);
-
-  const formatTime = (ms: number) => {
-    const seconds = (ms / 1000).toFixed(2);
-    return `${ms.toFixed(2)} ms (${seconds} s)`;
-  };
 
   return (
     <div className="relative flex flex-col gap-6 pb-10">

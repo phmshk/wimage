@@ -1,4 +1,5 @@
 import { useImageActions } from "@/entities/image";
+import { notify } from "@/shared/lib/notifications";
 import { Button } from "@/shared/ui/components/ui/button";
 import { Upload } from "lucide-react";
 import type { ChangeEvent } from "react";
@@ -9,6 +10,8 @@ export const ImageUpload = () => {
   const handleFile = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    e.target.value = "";
 
     const img = new Image();
     img.src = URL.createObjectURL(file);
@@ -22,12 +25,19 @@ export const ImageUpload = () => {
       if (!context) return;
 
       context.drawImage(img, 0, 0);
-      const imgData = context.getImageData(0, 0, img.width, img.height);
-      if (!imgData) return;
+      try {
+        const imgData = context.getImageData(0, 0, img.width, img.height);
+        setImage(imgData.data, img.width, img.height);
+      } catch (err) {
+        notify.error("Failed to get image data", err);
+      } finally {
+        URL.revokeObjectURL(img.src);
+      }
+    };
 
-      setImage(imgData.data, img.width, img.height);
-
+    img.onerror = () => {
       URL.revokeObjectURL(img.src);
+      notify.error("Failed to load image");
     };
   };
 

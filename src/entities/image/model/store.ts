@@ -6,6 +6,8 @@ import type { FilterOptions } from "@/shared/lib/image-processing";
 import { useShallow } from "zustand/react/shallow";
 import { subscribeWithSelector } from "zustand/middleware";
 import type { ChunkData } from "@/shared/lib/worker/types";
+import { notify } from "@/shared/lib/notifications";
+import { formatTime } from "@/shared/lib/utils";
 
 export const useImageStore = create<ImageState>()(
   subscribeWithSelector((set, get) => ({
@@ -25,6 +27,9 @@ export const useImageStore = create<ImageState>()(
         originalData: data,
         currData: new Uint8ClampedArray(data),
         error: null,
+        lastChunk: null,
+        progress: 0,
+        lastMetrics: null,
       }),
 
     applyFilter: async (filterName: FilterType, options?: FilterOptions) => {
@@ -60,13 +65,22 @@ export const useImageStore = create<ImageState>()(
           }
         );
 
-        if (response.success && response.buffer && response.type === "done") {
+        if (
+          response.success &&
+          response.buffer &&
+          response.type === "done" &&
+          response.metrics
+        ) {
           set({
             status: "idle",
             currData: response.buffer,
             lastMetrics: response.metrics,
             lastChunk: null,
           });
+          notify.success(
+            "Filter Applied",
+            `Last Operation Time: ${formatTime(response.metrics?.computeTime)}`
+          );
         } else {
           throw new Error(response.error);
         }
