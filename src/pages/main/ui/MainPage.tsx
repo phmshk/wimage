@@ -17,11 +17,16 @@ export const MainPage = () => {
       {/* Sidebar Controls */}
       <aside className="flex w-full flex-col gap-6 border-t bg-background p-6 lg:w-80 lg:min-w-80 lg:border-l lg:border-t-0 lg:overflow-y-auto">
         {/* Header / Title */}
-        <div>
-          <h1 className="text-lg font-semibold tracking-tight">Image Editor</h1>
-          <p className="text-sm text-muted-foreground">
-            Adjust filters and export
-          </p>
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="text-lg font-semibold tracking-tight">
+              Image Editor
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              Adjust filters and export
+            </p>
+          </div>
+          <ThemeToggle />
         </div>
 
         <ImageProcessingProgress />
@@ -35,7 +40,6 @@ export const MainPage = () => {
             <div className="flex flex-col gap-2">
               <ImageUpload />
               <ImageDownload />
-              <ThemeToggle />
             </div>
           </div>
 
