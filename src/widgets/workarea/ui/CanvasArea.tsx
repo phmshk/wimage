@@ -85,18 +85,27 @@ export const CanvasArea = () => {
   return (
     <div className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-lg border bg-background/50 backdrop-blur-sm shadow-sm md:p-4">
       {isModified && (
-        <div className="absolute top-4 right-4 z-50 flex flex-col items-end gap-2">
+        <div className="absolute top-4 right-4 z-50 flex flex-col items-end gap-2 animate-in fade-in duration-300 pointer-events-none">
           <Button
             variant="secondary"
             size="icon"
             className={cn(
-              "h-10 w-10 rounded-full shadow-md transition-transform active:scale-95 touch-none",
+              "h-10 w-10 rounded-full shadow-md transition-transform active:scale-95 touch-none pointer-events-auto",
               showOriginal &&
                 "bg-primary text-primary-foreground hover:bg-primary/90"
             )}
-            onPointerDown={() => setShowOriginal(true)}
-            onPointerUp={() => setShowOriginal(false)}
+            onPointerDown={(e) => {
+              e.preventDefault();
+              e.currentTarget.setPointerCapture(e.pointerId);
+              setShowOriginal(true);
+            }}
+            onPointerUp={(e) => {
+              e.preventDefault();
+              e.currentTarget.releasePointerCapture(e.pointerId);
+              setShowOriginal(false);
+            }}
             onPointerLeave={() => setShowOriginal(false)}
+            onContextMenu={(e) => e.preventDefault()}
             title="Hold to see original"
           >
             {showOriginal ? (
@@ -107,14 +116,25 @@ export const CanvasArea = () => {
           </Button>
         </div>
       )}
+
       <div
-        className="relative h-full w-full max-h-full max-w-full"
-        style={{ aspectRatio: `${imgInfo.width} / ${imgInfo.height}` }}
+        className="relative h-full w-full select-none touch-none flex items-center justify-center"
+        style={{
+          WebkitTouchCallout: "none",
+          WebkitUserSelect: "none",
+        }}
+        // className="relative h-full w-full max-h-full max-w-full select-none touch-none"
+        // style={{
+        //   aspectRatio: `${imgInfo.width} / ${imgInfo.height}`,
+        //   WebkitTouchCallout: "none",
+        //   WebkitUserSelect: "none",
+        // }}
+        onContextMenu={(e) => e.preventDefault()}
       >
         {/* original */}
         <canvas
           ref={originalRef}
-          className="absolute inset-0 h-full w-full object-contain"
+          className="absolute inset-0 h-full w-full object-contain pointer-events-none"
           width={imgInfo.width}
           height={imgInfo.height}
         />
@@ -123,14 +143,14 @@ export const CanvasArea = () => {
         <canvas
           ref={processedRef}
           className={cn(
-            "absolute inset-0 h-full w-full object-contain transition-opacity duration-200 ease-in-out",
-            showOriginal ? "opacity-0" : "opacity-100"
+            "absolute inset-0 h-full w-full object-contain transition-opacity duration-200 ease-in-out pointer-events-none",
+            isModified && showOriginal ? "opacity-0" : "opacity-100"
           )}
           width={imgInfo.width}
           height={imgInfo.height}
         />
 
-        <div className="absolute top-4 left-4 z-40 rounded bg-black/60 px-2 py-1 text-xs font-bold text-white backdrop-blur-md animate-in fade-in zoom-in-95 duration-200 pointer-events-none">
+        <div className="absolute top-4 left-4 z-40 rounded bg-black/60 px-2 py-1 text-xs font-bold text-white backdrop-blur-md animate-in fade-in zoom-in-95 duration-200 pointer-events-none select-none">
           {!isModified || showOriginal ? "ORIGINAL" : "FILTER"}
         </div>
       </div>

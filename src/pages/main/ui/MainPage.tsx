@@ -10,12 +10,15 @@ export const MainPage = () => {
   return (
     <>
       {/* Main Canvas Area */}
-      <section className="relative flex min-h-[50vh] flex-1 flex-col items-center justify-center overflow-hidden bg-muted/30 p-4 lg:min-h-full">
+      <section className="relative flex w-full shrink-0 flex-col items-center justify-center overflow-hidden bg-muted/30 p-4 h-[50vh] lg:h-full lg:flex-1">
         <CanvasArea />
       </section>
+      {/* // <section className="relative flex min-h-[50vh] flex-1 flex-col items-center justify-center overflow-hidden bg-muted/30 p-4 lg:min-h-full"> */}
+      {/* //   <CanvasArea /> */}
+      {/* // </section> */}
 
       {/* Sidebar Controls */}
-      <aside className="flex w-full flex-col gap-6 border-t bg-background p-6 lg:w-80 lg:min-w-80 lg:border-l lg:border-t-0 lg:overflow-y-auto">
+      <aside className="flex w-full flex-col gap-6 border-t bg-background p-6 lg:w-80 lg:min-w-80 lg:border-l lg:border-t-0 lg:overflow-y-auto select-none">
         {/* Header / Title */}
         <div className="flex items-start justify-between">
           <div>
