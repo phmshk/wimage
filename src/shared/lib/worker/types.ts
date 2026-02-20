@@ -22,6 +22,7 @@ export interface FilterPayload {
   options?: FilterOptions;
   width: number;
   height: number;
+  engine?: "js" | "wasm";
 }
 
 // from main thread to worker

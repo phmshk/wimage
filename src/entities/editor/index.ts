@@ -1,1 +1,6 @@
-export { useEngine, useEditorActions } from "./model/store";
+export {
+  useEngine,
+  useEditorActions,
+  useEditorStore,
+  useExecutionResults,
+} from "./model/store";

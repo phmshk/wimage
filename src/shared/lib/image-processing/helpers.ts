@@ -1,3 +1,10 @@
+/** Finds the position  of a pixel in an image data array.
+ * @param x - horizontal coordinate of the pixel
+ * @param y - vertical coordinate of the pixel
+ * @param width - total width of the image in pixels
+ * @param height - total height of the image in pixels
+ * @returns starting position in the array
+ */
 export function getPixelIndex(
   x: number,
   y: number,

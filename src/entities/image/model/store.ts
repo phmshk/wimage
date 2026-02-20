@@ -8,6 +8,7 @@ import { subscribeWithSelector } from "zustand/middleware";
 import type { ChunkData } from "@/shared/lib/worker/types";
 import { notify } from "@/shared/lib/notifications";
 import { formatTime } from "@/shared/lib/utils";
+import { useEditorStore } from "@/entities/editor";
 
 export const useImageStore = create<ImageState>()(
   subscribeWithSelector((set, get) => ({
@@ -26,7 +27,10 @@ export const useImageStore = create<ImageState>()(
       width: number,
       height: number,
       filename: string
-    ) =>
+    ) => {
+      const { clearResults } = useEditorStore.getState();
+
+      clearResults();
       set({
         status: "idle",
         info: { width, height, filename },
@@ -36,10 +40,12 @@ export const useImageStore = create<ImageState>()(
         lastChunk: null,
         progress: 0,
         lastMetrics: null,
-      }),
+      });
+    },
 
     applyFilter: async (filterName: FilterType, options?: FilterOptions) => {
       const { currData, info, status } = get();
+      const { engine, setResult } = useEditorStore.getState();
 
       if (status === "processing") return;
       if (!currData || !info) return;
@@ -58,6 +64,7 @@ export const useImageStore = create<ImageState>()(
           width: info.width,
           height: info.height,
           options,
+          engine,
         };
 
         const imageData = new Uint8ClampedArray(currData);
@@ -93,6 +100,7 @@ export const useImageStore = create<ImageState>()(
             "Filter Applied",
             `Last Operation Time: ${formatTime(response.metrics?.computeTime)}`
           );
+          setResult(engine, response.metrics.computeTime);
         } else {
           throw new Error(response.error);
         }

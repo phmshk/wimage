@@ -1,6 +1,6 @@
 import type { FilterProcessFn } from "../../types";
 
-export const applyGrayscale: FilterProcessFn = (pixels) => {
+export const applyGrayscale: FilterProcessFn = (pixels: Uint8ClampedArray) => {
   for (let i = 0; i < pixels.length; i += 4) {
     const r = pixels[i];
     const g = pixels[i + 1];

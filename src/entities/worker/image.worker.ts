@@ -8,19 +8,38 @@ import {
   applySepia,
   applySharpen,
   applySobel,
+  type FilterProcessFn,
 } from "@/shared/lib/image-processing";
-import type { WorkerRequest, WorkerResponse } from "@/shared/lib/worker";
-import { applyFilterAndCrop, getChunkWithPadding } from "./model/helpers";
+import type {
+  WorkerRequest,
+  WorkerResponse,
+  FilterType,
+} from "@/shared/lib/worker";
+import { extractAndCropChunk, getChunkWithPadding } from "./model/helpers";
 import {
   PX_SIZE,
   CHUNK_HEIGHT,
   CHUNK_WIDTH,
   CHUNK_PADDING,
 } from "./model/constants";
+import { wasmEngine } from "./WasmEngine";
 
-self.onmessage = (e: MessageEvent<WorkerRequest>) => {
+const jsFilters: Record<FilterType, FilterProcessFn> = {
+  grayscale: applyGrayscale,
+  inversion: applyInversion,
+  sepia: applySepia,
+  "gaussian-blur": applyGaussianBlur,
+  sobel: applySobel,
+  sharpen: applySharpen,
+  median: applyMedian,
+  kuwahara: applyKuwahara,
+  bilateral: applyBilateral,
+};
+
+wasmEngine.init().catch((err) => console.error("Wasm init failed:", err));
+
+self.onmessage = async (e: MessageEvent<WorkerRequest>) => {
   const { id, type, buffer, payload } = e.data;
-  const start = performance.now();
 
   try {
     if (type === "init") return;
@@ -35,7 +54,12 @@ self.onmessage = (e: MessageEvent<WorkerRequest>) => {
         throw new Error("No buffer or payload provided");
       }
 
-      const { filterName, width, height, options } = payload;
+      const start = performance.now();
+      const { filterName, width, height, options, engine } = payload;
+
+      if (engine === "wasm") {
+        await wasmEngine.init();
+      }
 
       const finalBuffer = new Uint8ClampedArray(width * height * PX_SIZE);
       const padding = options?.radius
@@ -45,12 +69,44 @@ self.onmessage = (e: MessageEvent<WorkerRequest>) => {
         Math.ceil(width / CHUNK_WIDTH) * Math.ceil(height / CHUNK_HEIGHT);
       let processedChunks = 0;
 
+      const maxPaddedWidth = CHUNK_WIDTH + padding * 2;
+      const maxPaddedHeight = CHUNK_HEIGHT + padding * 2;
+      const maxByteSize = maxPaddedWidth * maxPaddedHeight * PX_SIZE;
+
+      let wasmViews: {
+        inputView: Uint8Array;
+        inputPtr: number;
+        outputPtr: number;
+      } | null = null;
+      let jsPaddedBuffer: Uint8ClampedArray | null = null;
+      let activeFilterFn: FilterProcessFn | null = null;
+
+      if (engine === "wasm") {
+        wasmViews = wasmEngine.prepareChunkBuffers(
+          maxPaddedWidth,
+          maxPaddedHeight
+        );
+        if (filterName === "gaussian-blur" && options?.radius) {
+          wasmEngine.prepareGaussianKernel(options.radius);
+        }
+      } else {
+        activeFilterFn = jsFilters[filterName];
+        if (!activeFilterFn)
+          throw new Error(`Unknown JS filter: ${filterName}`);
+        jsPaddedBuffer = new Uint8ClampedArray(maxByteSize);
+      }
+
       for (let y = 0; y < height; y += CHUNK_HEIGHT) {
         for (let x = 0; x < width; x += CHUNK_WIDTH) {
           const currChunkWidth = Math.min(CHUNK_WIDTH, width - x);
           const currChunkHeight = Math.min(CHUNK_HEIGHT, height - y);
 
-          const paddedChunk = getChunkWithPadding(
+          const currPaddedWidth = currChunkWidth + padding * 2;
+          const currPaddedHeight = currChunkHeight + padding * 2;
+          const targetBuffer =
+            engine === "wasm" ? wasmViews!.inputView : jsPaddedBuffer!;
+
+          getChunkWithPadding(
             x,
             y,
             width,
@@ -58,106 +114,39 @@ self.onmessage = (e: MessageEvent<WorkerRequest>) => {
             buffer,
             currChunkWidth,
             currChunkHeight,
-            padding
+            padding,
+            targetBuffer
           );
 
-          let resultChunk: Uint8ClampedArray;
+          let processedPaddedBuffer: Uint8Array | Uint8ClampedArray;
 
-          switch (filterName) {
-            case "grayscale":
-              resultChunk = applyFilterAndCrop(
-                paddedChunk,
-                applyGrayscale,
-                currChunkWidth,
-                currChunkHeight,
-                padding,
-                options
-              );
-              break;
-            case "inversion":
-              resultChunk = applyFilterAndCrop(
-                paddedChunk,
-                applyInversion,
-                currChunkWidth,
-                currChunkHeight,
-                padding,
-                options
-              );
-              break;
-            case "sepia":
-              resultChunk = applyFilterAndCrop(
-                paddedChunk,
-                applySepia,
-                currChunkWidth,
-                currChunkHeight,
-                padding,
-                options
-              );
-              break;
-            case "gaussian-blur":
-              resultChunk = applyFilterAndCrop(
-                paddedChunk,
-                applyGaussianBlur,
-                currChunkWidth,
-                currChunkHeight,
-                padding,
-                options
-              );
-              break;
-            case "sobel":
-              resultChunk = applyFilterAndCrop(
-                paddedChunk,
-                applySobel,
-                currChunkWidth,
-                currChunkHeight,
-                padding,
-                options
-              );
-              break;
-            case "sharpen":
-              resultChunk = applyFilterAndCrop(
-                paddedChunk,
-                applySharpen,
-
-                currChunkWidth,
-                currChunkHeight,
-                padding,
-                options
-              );
-              break;
-            case "median":
-              resultChunk = applyFilterAndCrop(
-                paddedChunk,
-                applyMedian,
-                currChunkWidth,
-                currChunkHeight,
-                padding,
-                options
-              );
-              break;
-            case "kuwahara":
-              resultChunk = applyFilterAndCrop(
-                paddedChunk,
-                applyKuwahara,
-                currChunkWidth,
-                currChunkHeight,
-                padding,
-                options
-              );
-              break;
-            case "bilateral":
-              resultChunk = applyFilterAndCrop(
-                paddedChunk,
-                applyBilateral,
-                currChunkWidth,
-                currChunkHeight,
-                padding,
-                options
-              );
-              break;
-            default:
-              throw new Error(`Unknown filter: ${filterName}`);
+          if (engine === "wasm") {
+            const resultPtr = wasmEngine.process(
+              filterName,
+              currPaddedWidth,
+              currPaddedHeight,
+              options
+            );
+            processedPaddedBuffer = wasmEngine.getResultView(
+              resultPtr,
+              currPaddedWidth,
+              currPaddedHeight
+            );
+          } else {
+            processedPaddedBuffer = activeFilterFn!(
+              targetBuffer as Uint8ClampedArray,
+              currPaddedWidth,
+              currPaddedHeight,
+              options
+            );
           }
+
+          const resultChunk = extractAndCropChunk(
+            processedPaddedBuffer,
+            currChunkWidth,
+            currChunkHeight,
+            padding
+          );
 
           for (let cy = 0; cy < currChunkHeight; cy++) {
             const destStart = ((y + cy) * width + x) * PX_SIZE;

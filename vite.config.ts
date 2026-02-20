@@ -14,5 +14,15 @@ export default defineConfig({
   },
   server: {
     allowedHosts: ["aria-unbookish-supportingly.ngrok-free.dev"],
+    headers: {
+      "Cross-Origin-Opener-Policy": "same-origin",
+      "Cross-Origin-Embedder-Policy": "require-corp",
+    },
+  },
+  worker: {
+    format: "es",
+  },
+  optimizeDeps: {
+    exclude: ["@/shared/lib/wasm/filters.js"],
   },
 });

@@ -1,5 +1,4 @@
 export interface FilterOptions {
-  amount?: number;
   radius?: number;
 }
 

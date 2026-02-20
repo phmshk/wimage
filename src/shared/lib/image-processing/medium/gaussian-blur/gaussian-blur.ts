@@ -8,7 +8,6 @@ export const applyGaussianBlur: FilterProcessFn = (
   options
 ) => {
   const radius = options?.radius || 3;
-  if (radius < 1) return pixels;
 
   // 1. Cernel generation (1D)
   const sigma = radius / 3;
@@ -17,16 +16,22 @@ export const applyGaussianBlur: FilterProcessFn = (
   let kernelSum = 0;
 
   // fill with gaussian
+  const twoSigmaSq = 2 * sigma * sigma;
+  const multiplier = 1 / (Math.sqrt(2 * Math.PI) * sigma);
+
+  // fill with gaussian
   for (let i = 0; i < kernelSize; i++) {
     const x = i - radius;
-    const g =
-      (1 / (Math.sqrt(2 * Math.PI) * sigma)) *
-      Math.exp(-(x * x) / (2 * sigma * sigma));
+    const g = multiplier * Math.exp(-(x * x) / twoSigmaSq);
     kernel[i] = g;
     kernelSum += g;
   }
+
   // normalization
-  for (let i = 0; i < kernelSize; i++) kernel[i] /= kernelSum;
+  const invKernelSum = 1 / kernelSum;
+  for (let i = 0; i < kernelSize; i++) {
+    kernel[i] *= invKernelSum;
+  }
 
   // buffers
   const tempPixels = new Uint8ClampedArray(pixels.length);

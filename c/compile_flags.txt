@@ -1,0 +1,4 @@
+-Iinclude
+-include common.h
+-I/usr/local/include
+-Wall

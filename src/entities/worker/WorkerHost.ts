@@ -2,8 +2,8 @@ import type {
   WorkerResponse,
   FilterPayload,
   WorkerRequest,
+  ChunkData,
 } from "@/shared/lib/worker";
-import type { ChunkData } from "@/shared/lib/worker/types";
 
 export class WorkerHost {
   private worker: Worker | null = null;

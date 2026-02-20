@@ -11,12 +11,17 @@ import { useState } from "react";
 import { FilterControl } from "./FilterControl";
 import { FILTER_DESCRIPTIONS } from "../model/filters-info";
 import { FilterInfo } from "./FilterInfo";
+import { EngineSelector } from "@/features/change-engine";
+import { useExecutionResults } from "@/entities/editor";
 
 export const ControlPanel = () => {
   const { applyFilter, reset } = useImageActions();
   const lastMetrics = useMetrics();
   const status = useImageStatus();
   const hasImage = !!useCurrData();
+
+  const res = useExecutionResults();
+  console.log(res);
 
   const isBusy = status === "processing";
   const isDisabled = isBusy || !hasImage;
@@ -43,6 +48,7 @@ export const ControlPanel = () => {
           !hasImage && "opacity-40 grayscale pointer-events-none"
         )}
       >
+        <EngineSelector />
         <div className="space-y-3">
           <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Basic Adjustments
@@ -175,7 +181,7 @@ export const ControlPanel = () => {
 
           {/* Kuwahara */}
           <FilterControl
-            label="Kuwahara (Oil Painting)"
+            label="Kuwahara"
             description={FILTER_DESCRIPTIONS.kuwahara}
             value={kuwaharaRadius}
             onValueChange={setKuwaharaRadius}
