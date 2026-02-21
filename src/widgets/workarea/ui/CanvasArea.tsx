@@ -1,70 +1,53 @@
-import {
-  useCurrData,
-  useImageInfo,
-  useImageStore,
-  useIsModified,
-  useOriginalData,
-} from "@/entities/image";
+import { useImageInfo, useIsModified } from "@/entities/image";
+import { useImageBitmap, useImageStatus } from "@/entities/image/model/store";
+import { workerHost } from "@/entities/worker/WorkerHost";
 import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/ui/components/ui/button";
-import { Eye, EyeOff, ImageIcon } from "lucide-react";
+import { Eye, EyeOff, ImageIcon, LoaderCircle } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { drawToCanvas } from "../model/helpers";
 
 export const CanvasArea = () => {
   const processedRef = useRef<HTMLCanvasElement>(null);
   const originalRef = useRef<HTMLCanvasElement>(null);
 
-  const currentData = useCurrData();
-  const originalData = useOriginalData();
+  const offscreenTransferred = useRef<HTMLCanvasElement | null>(null);
+
   const imgInfo = useImageInfo();
+  const bitmap = useImageBitmap();
+  const isModified = useIsModified();
+  const status = useImageStatus();
 
   const [showOriginal, setShowOriginal] = useState(false);
-  const isModified = useIsModified();
 
-  // processed canvas
+  //original
   useEffect(() => {
-    if (processedRef.current && imgInfo && currentData) {
-      drawToCanvas(
-        processedRef.current,
-        currentData,
-        imgInfo.width,
-        imgInfo.height
-      );
-    }
-  }, [currentData, imgInfo]);
-
-  // original canvas
-  useEffect(() => {
-    if (originalRef.current && imgInfo && originalData) {
-      drawToCanvas(
-        originalRef.current,
-        originalData,
-        imgInfo.width,
-        imgInfo.height
-      );
-    }
-  }, [originalData, imgInfo]);
-
-  // chunks handling
-  useEffect(() => {
-    const unsub = useImageStore.subscribe(
-      (state) => state.lastChunk,
-      (chunk) => {
-        if (chunk && processedRef.current) {
-          drawToCanvas(
-            processedRef.current,
-            chunk.data,
-            chunk.width,
-            chunk.height,
-            chunk.x,
-            chunk.y
-          );
-        }
+    if (bitmap && originalRef.current && imgInfo) {
+      const ctx = originalRef.current.getContext("2d");
+      if (ctx) {
+        ctx.clearRect(0, 0, imgInfo.width, imgInfo.height);
+        ctx.drawImage(bitmap, 0, 0);
       }
-    );
-    return () => unsub();
+    }
+  }, [bitmap, imgInfo]);
+
+  // processed
+  useEffect(() => {
+    if (
+      processedRef.current &&
+      processedRef.current !== offscreenTransferred.current
+    ) {
+      try {
+        const offscreen = processedRef.current.transferControlToOffscreen();
+        workerHost.initOffscreen(offscreen);
+
+        offscreenTransferred.current = processedRef.current;
+      } catch (e) {
+        console.error("Failed to transfer canvas control:", e);
+      }
+    }
   }, [imgInfo]);
+
+  const isProcessing = status === "processing";
 
   if (!imgInfo) {
     return (
@@ -84,7 +67,23 @@ export const CanvasArea = () => {
 
   return (
     <div className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-lg border bg-background/50 backdrop-blur-sm shadow-sm md:p-4">
-      {isModified && (
+      <div
+        className={`absolute inset-0 z-50 flex flex-col items-center justify-center bg-background/40 text-foreground backdrop-blur-md transition-opacity duration-300 ${
+          isProcessing
+            ? "opacity-100 pointer-events-auto"
+            : "opacity-0 pointer-events-none"
+        }`}
+      >
+        {isProcessing && (
+          <>
+            <LoaderCircle className="h-12 w-12 animate-spin text-primary-foreground" />
+            <p className="mt-4 text-lg font-medium tracking-wide animate-pulse">
+              Processing...
+            </p>
+          </>
+        )}
+      </div>
+      {isModified && !isProcessing && (
         <div className="absolute top-4 right-4 z-50 flex flex-col items-end gap-2 animate-in fade-in duration-300 pointer-events-none">
           <Button
             variant="secondary"
@@ -123,12 +122,6 @@ export const CanvasArea = () => {
           WebkitTouchCallout: "none",
           WebkitUserSelect: "none",
         }}
-        // className="relative h-full w-full max-h-full max-w-full select-none touch-none"
-        // style={{
-        //   aspectRatio: `${imgInfo.width} / ${imgInfo.height}`,
-        //   WebkitTouchCallout: "none",
-        //   WebkitUserSelect: "none",
-        // }}
         onContextMenu={(e) => e.preventDefault()}
       >
         {/* original */}
@@ -141,6 +134,7 @@ export const CanvasArea = () => {
 
         {/* processed */}
         <canvas
+          id="result"
           ref={processedRef}
           className={cn(
             "absolute inset-0 h-full w-full object-contain transition-opacity duration-200 ease-in-out pointer-events-none",

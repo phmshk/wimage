@@ -1,7 +1,7 @@
 import { ChevronDown, Download } from "lucide-react";
 import { downloadImage } from "../model/helpers";
 import { Button } from "@/shared/ui/components/ui/button";
-import { useCurrData, useImageInfo, useImageStatus } from "@/entities/image";
+import { useImageInfo, useImageStatus } from "@/entities/image";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -11,17 +11,20 @@ import {
 
 export const ImageDownload = () => {
   const info = useImageInfo();
-  const currData = useCurrData();
   const status = useImageStatus();
 
-  const handleDownload = (ext: string, mimeType: string) => {
-    if (currData && info) {
-      const finalName = `${info.filename}_processed.${ext}`;
+  const handleDownload = (mimeType: string) => {
+    if (!info) return;
 
-      downloadImage(currData, info.width, info.height, finalName, mimeType);
+    const canvas = document.getElementById("result") as HTMLCanvasElement;
+
+    if (canvas) {
+      downloadImage(canvas, info.filename, mimeType);
     }
   };
-  const isDisabled = status === "processing" || !currData;
+
+  const isDisabled =
+    status === "no_img" || status === "processing" || status === "error";
 
   return (
     <DropdownMenu>
@@ -39,13 +42,13 @@ export const ImageDownload = () => {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56" align="end">
-        <DropdownMenuItem onClick={() => handleDownload("png", "image/png")}>
+        <DropdownMenuItem onClick={() => handleDownload("image/png")}>
           Download as PNG
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => handleDownload("jpg", "image/jpeg")}>
+        <DropdownMenuItem onClick={() => handleDownload("image/jpeg")}>
           Download as JPEG
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => handleDownload("webp", "image/webp")}>
+        <DropdownMenuItem onClick={() => handleDownload("image/webp")}>
           Download as WEBP
         </DropdownMenuItem>
       </DropdownMenuContent>

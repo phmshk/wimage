@@ -1,9 +1,4 @@
-import {
-  useMetrics,
-  useImageActions,
-  useImageStatus,
-  useCurrData,
-} from "@/entities/image";
+import { useMetrics, useImageActions, useImageStatus } from "@/entities/image";
 import { cn, formatTime } from "@/shared/lib/utils";
 import { Button } from "@/shared/ui/components/ui/button";
 import { Play, RotateCcw } from "lucide-react";
@@ -11,12 +6,13 @@ import { useState } from "react";
 import { FilterControl } from "./FilterControl";
 import { FILTER_DESCRIPTIONS } from "../model/filters-info";
 import { FilterInfo } from "./FilterInfo";
+import { useImageBitmap } from "@/entities/image/model/store";
 
 export const ControlPanel = () => {
   const { applyFilter, reset } = useImageActions();
   const lastMetrics = useMetrics();
   const status = useImageStatus();
-  const hasImage = !!useCurrData();
+  const hasImage = !!useImageBitmap();
 
   const isBusy = status === "processing";
   const isDisabled = isBusy || !hasImage;

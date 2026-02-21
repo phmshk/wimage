@@ -4,4 +4,5 @@ export type {
   WorkerResponse,
   FilterType,
   WorkerActionType,
+  ChunkData,
 } from "./types.ts";

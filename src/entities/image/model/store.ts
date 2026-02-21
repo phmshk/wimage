@@ -1,4 +1,4 @@
-import type { ImageState } from "./types";
+import type { ImageBitmapData, ImageState } from "./types";
 import { create } from "zustand";
 import type { FilterPayload, FilterType } from "@/shared/lib/worker";
 import { workerHost } from "@/entities/worker/WorkerHost";
@@ -13,43 +13,38 @@ export const useImageStore = create<ImageState>()(
   subscribeWithSelector((set, get) => ({
     status: "no_img",
     info: null,
-    originalData: null,
-    currData: null,
+    bitmap: undefined,
     lastMetrics: null,
     error: null,
-    lastChunk: null,
     progress: 0,
     isModified: false,
 
-    setImage: (
-      data: Uint8ClampedArray,
-      width: number,
-      height: number,
-      filename: string
-    ) =>
+    setImage: (data: ImageBitmapData) => {
       set({
         status: "idle",
-        info: { width, height, filename },
-        originalData: data,
-        currData: new Uint8ClampedArray(data),
+        info: {
+          width: data.width,
+          height: data.height,
+          filename: data.filename,
+        },
+        bitmap: data.bitmap,
         error: null,
-        lastChunk: null,
         progress: 0,
         lastMetrics: null,
-      }),
+        isModified: false,
+      });
+      workerHost.setImage(data.workerBitmap, data.width, data.height);
+    },
 
     applyFilter: async (filterName: FilterType, options?: FilterOptions) => {
-      const { currData, info, status } = get();
+      const { info, status } = get();
 
-      if (status === "processing") return;
-      if (!currData || !info) return;
+      if (status === "processing" || !info) return;
 
       set({
         status: "processing",
         error: null,
         progress: 0,
-        lastChunk: null,
-        isModified: true,
       });
 
       try {
@@ -60,9 +55,7 @@ export const useImageStore = create<ImageState>()(
           options,
         };
 
-        const imageData = new Uint8ClampedArray(currData);
         const response = await workerHost.processImage(
-          imageData,
           payload,
           (chunk: ChunkData) => {
             const currentProgress = get().progress;
@@ -70,24 +63,16 @@ export const useImageStore = create<ImageState>()(
               (chunk.progress.processed / chunk.progress.total) * 100
             );
             if (percentage !== currentProgress) {
-              set({ lastChunk: chunk, progress: percentage });
-            } else {
-              set({ lastChunk: chunk });
+              set({ progress: percentage });
             }
           }
         );
 
-        if (
-          response.success &&
-          response.buffer &&
-          response.type === "done" &&
-          response.metrics
-        ) {
+        if (response.success && response.type === "done" && response.metrics) {
           set({
             status: "idle",
-            currData: response.buffer,
             lastMetrics: response.metrics,
-            lastChunk: null,
+            isModified: true,
           });
           notify.success(
             "Filter Applied",
@@ -97,26 +82,28 @@ export const useImageStore = create<ImageState>()(
           throw new Error(response.error);
         }
       } catch (e) {
+        const errorMessage = (e as Error).message;
         set({
           status: "error",
-          error: (e as Error).message,
+          error: errorMessage,
           progress: 0,
-          lastChunk: null,
         });
+        if (errorMessage === "Cancelled") return;
+        notify.error("Filter failed.", errorMessage, 8000);
       }
     },
 
-    reset: () => {
-      const { originalData } = get();
-      if (originalData) {
-        set({
-          currData: new Uint8ClampedArray(originalData),
-          error: null,
-          lastChunk: null,
-          progress: 0,
-          lastMetrics: null,
-          isModified: false,
-        });
+    reset: async () => {
+      set({
+        error: null,
+        progress: 0,
+        lastMetrics: null,
+        isModified: false,
+      });
+      const { bitmap, info } = get();
+      if (bitmap && info) {
+        const newWorkerBitmap = await createImageBitmap(bitmap);
+        workerHost.setImage(newWorkerBitmap, info.width, info.height);
       }
     },
 
@@ -124,12 +111,11 @@ export const useImageStore = create<ImageState>()(
       const { status } = get();
       if (status !== "processing") return;
 
-      workerHost.terminate();
+      workerHost.abortCurrTask();
 
       set({
         status: "idle",
         progress: 0,
-        lastChunk: null,
       });
 
       notify.warning(
@@ -141,10 +127,8 @@ export const useImageStore = create<ImageState>()(
   }))
 );
 
-export const useOriginalData = () =>
-  useImageStore((state) => state.originalData);
-export const useCurrData = () => useImageStore((state) => state.currData);
 export const useImageInfo = () => useImageStore((state) => state.info);
+export const useImageBitmap = () => useImageStore((state) => state.bitmap);
 export const useImageStatus = () => useImageStore((state) => state.status);
 export const useImageError = () => useImageStore((state) => state.error);
 export const useMetrics = () => useImageStore((state) => state.lastMetrics);
