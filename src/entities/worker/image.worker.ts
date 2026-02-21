@@ -24,7 +24,7 @@ let pendingImageData: {
 let isCancelled = false;
 
 self.onmessage = async (e: MessageEvent<WorkerRequest>) => {
-  const { type, id, payload, canvas, imageData } = e.data;
+  const { type, id, payload, canvas, imageData, cancelBuffer } = e.data;
 
   try {
     if (type === "cancel_filter") {
@@ -53,7 +53,7 @@ self.onmessage = async (e: MessageEvent<WorkerRequest>) => {
 
     if (type === "apply_filter" && id && payload) {
       isCancelled = false;
-      await runFilterBenchmark(id, payload);
+      await runFilterBenchmark(id, payload, cancelBuffer);
       return;
     }
   } catch (error) {
@@ -67,7 +67,11 @@ self.onmessage = async (e: MessageEvent<WorkerRequest>) => {
   }
 };
 
-async function runFilterBenchmark(id: string, payload: FilterPayload) {
+async function runFilterBenchmark(
+  id: string,
+  payload: FilterPayload,
+  cancelBuffer?: SharedArrayBuffer
+) {
   if (!offscreenCtx) throw new Error("Canvas not ready");
 
   const { width, height, filterName, options } = payload;
@@ -92,9 +96,13 @@ async function runFilterBenchmark(id: string, payload: FilterPayload) {
   const startTime = performance.now();
   let lastYieldTime = performance.now();
 
+  const cancelFlag = cancelBuffer ? new Uint8Array(cancelBuffer) : null;
+
   for (let y = 0; y < height; y += CHUNK_HEIGHT) {
     for (let x = 0; x < width; x += CHUNK_WIDTH) {
-      if (isCancelled) return;
+      if ((cancelFlag && cancelFlag[0] === 1) || isCancelled) {
+        return;
+      }
 
       const currentChunkW = Math.min(CHUNK_WIDTH, width - x); //
       const currentChunkH = Math.min(CHUNK_HEIGHT, height - y); //
@@ -160,7 +168,9 @@ async function runFilterBenchmark(id: string, payload: FilterPayload) {
           },
         });
 
-        await new Promise((resolve) => setTimeout(resolve, 0));
+        if (typeof SharedArrayBuffer === "undefined") {
+          await new Promise((resolve) => setTimeout(resolve, 0));
+        }
         lastYieldTime = performance.now();
       }
     }

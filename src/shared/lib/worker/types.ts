@@ -42,6 +42,7 @@ export interface WorkerRequest {
     width: number;
     height: number;
   };
+  cancelBuffer?: SharedArrayBuffer | undefined;
 }
 
 export interface ChunkData {

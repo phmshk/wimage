@@ -13,6 +13,7 @@ export class WorkerHost {
       resolve: (res: WorkerResponse) => void;
       reject: (reason: unknown) => void;
       onProgress?: (chunk: ChunkData) => void;
+      cancelFlag?: Uint8Array;
     }
   >();
   private currentRequestId: string | null = null;
@@ -62,12 +63,24 @@ export class WorkerHost {
       }
 
       this.currentRequestId = id;
-      this.pendingRequests.set(id, { resolve, reject, onProgress });
+
+      const supportsSAB = typeof SharedArrayBuffer !== "undefined";
+      let cancelBuffer: SharedArrayBuffer | undefined;
+      let cancelFlag: Uint8Array | undefined;
+
+      if (supportsSAB) {
+        cancelBuffer = new SharedArrayBuffer(1);
+        cancelFlag = new Uint8Array(cancelBuffer);
+        cancelFlag[0] = 0; // 0 - works, 1 - cancel
+      }
+
+      this.pendingRequests.set(id, { resolve, reject, onProgress, cancelFlag });
 
       const request: WorkerRequest = {
         id,
         type: "apply_filter",
         payload,
+        cancelBuffer,
       };
 
       try {
@@ -82,26 +95,23 @@ export class WorkerHost {
 
   public abortCurrTask() {
     this.cancelProcessing();
-    // if (!this.worker) return;
-    //
-    // this.worker.terminate();
-    // this.worker = null;
-    //
-    // for (const [_, req] of this.pendingRequests) {
-    //   req.reject(new Error("Worker terminated"));
-    // }
-    //
-    // this.pendingRequests.clear();
-    // this.currentRequestId = null;
   }
 
   private cancelProcessing() {
     if (this.currentRequestId) {
+      const req = this.pendingRequests.get(this.currentRequestId);
+
+      if (req) {
+        if (req.cancelFlag) {
+          req.cancelFlag[0] = 1;
+        }
+        req.reject(new Error("Cancelled"));
+      }
+      // fallback
       this.getWorker().postMessage({
         type: "cancel_filter",
         id: this.currentRequestId,
       });
-      const req = this.pendingRequests.get(this.currentRequestId);
       req?.reject(new Error("Cancelled"));
       this.pendingRequests.delete(this.currentRequestId);
       this.currentRequestId = null;
