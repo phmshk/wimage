@@ -8,10 +8,12 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/shared/ui/components/ui/dropdown-menu";
+import { useState } from "react";
 
 export const ImageDownload = () => {
   const info = useImageInfo();
   const status = useImageStatus();
+  const [isOpen, setIsOpen] = useState(false);
 
   const handleDownload = (mimeType: string) => {
     if (!info) return;
@@ -21,18 +23,30 @@ export const ImageDownload = () => {
     if (canvas) {
       downloadImage(canvas, info.filename, mimeType);
     }
+
+    setIsOpen(false);
   };
 
   const isDisabled =
     status === "no_img" || status === "processing" || status === "error";
 
   return (
-    <DropdownMenu>
+    <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild>
         <Button
           variant="outline"
           className="w-full justify-between"
           disabled={isDisabled}
+          onPointerDown={(e) => {
+            if (e.pointerType === "touch") {
+              e.preventDefault();
+            }
+          }}
+          onPointerUp={(e) => {
+            if (e.pointerType === "touch") {
+              setIsOpen((prev) => !prev);
+            }
+          }}
         >
           <span className="flex items-center">
             <Download className="mr-2 h-4 w-4" />

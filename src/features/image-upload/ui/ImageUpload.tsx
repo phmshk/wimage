@@ -1,38 +1,35 @@
 import { useImageActions, useImageStatus } from "@/entities/image";
 import { notify } from "@/shared/lib/notifications";
 import { Button } from "@/shared/ui/components/ui/button";
-import { Upload } from "lucide-react";
-import type { ChangeEvent } from "react";
+import { Loader2, Upload } from "lucide-react";
+import { useState, type ChangeEvent } from "react";
+import { normalizeImageFile, validateImage } from "../model/helpers";
 
 export const ImageUpload = () => {
   const { setImage } = useImageActions();
   const status = useImageStatus();
-
-  const validateImage = (file: File): boolean => {
-    if (!file.type.startsWith("image/")) {
-      notify.error("Only images allowed");
-      return false;
-    }
-    if (file.size > 100 * 1024 * 1024) {
-      // 100MB
-      notify.error("Max 100MB");
-      return false;
-    }
-    return true;
-  };
+  const [isUploading, setIsUploading] = useState(false);
 
   const isDisabled = status === "loading" || status === "processing";
 
   const handleFile = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !validateImage(file)) return;
+    if (!file) return;
 
-    const filename = file.name.replace(/\.[^/.]+$/, "");
-
+    if (!validateImage(file)) {
+      e.target.value = "";
+      return;
+    }
     try {
+      setIsUploading(true);
+
+      const { blob, filename: safeFilename } = await normalizeImageFile(file);
+
+      const cleanFilename = safeFilename.replace(/\.[^/.]+$/, "");
+
       const [bitmapUI, bitmapWorker] = await Promise.all([
-        createImageBitmap(file),
-        createImageBitmap(file),
+        createImageBitmap(blob),
+        createImageBitmap(blob),
       ]);
 
       setImage({
@@ -40,12 +37,15 @@ export const ImageUpload = () => {
         workerBitmap: bitmapWorker,
         width: bitmapUI.width,
         height: bitmapUI.height,
-        filename,
+        filename: cleanFilename,
       });
 
       notify.success("Image loaded successfully");
     } catch (err) {
       notify.error(`Failed to load: ${(err as Error).message}`);
+    } finally {
+      setIsUploading(false);
+      e.target.value = "";
     }
   };
 
@@ -54,7 +54,7 @@ export const ImageUpload = () => {
       <input
         id="image-upload"
         type="file"
-        accept="image/*"
+        accept="image/*,.heic,.heif"
         className="hidden"
         onChange={handleFile}
       />
@@ -64,9 +64,18 @@ export const ImageUpload = () => {
         disabled={isDisabled}
         asChild
       >
-        <label htmlFor="image-upload" className="cursor-pointer">
-          <Upload className="mr-2 h-4 w-4" />
-          Upload Image
+        <label htmlFor="image-upload" className="cursor-pointer font-medium">
+          {isUploading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Uploading...
+            </>
+          ) : (
+            <>
+              <Upload className="mr-2 h-4 w-4" />
+              Upload Image
+            </>
+          )}
         </label>
       </Button>
     </>
