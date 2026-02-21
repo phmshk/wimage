@@ -3,7 +3,7 @@ import { useImageBitmap, useImageStatus } from "@/entities/image/model/store";
 import { workerHost } from "@/entities/worker/WorkerHost";
 import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/ui/components/ui/button";
-import { Eye, EyeOff, ImageIcon, LoaderCircle } from "lucide-react";
+import { Eye, EyeOff, ImageIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 export const CanvasArea = () => {
@@ -144,7 +144,7 @@ export const CanvasArea = () => {
           height={imgInfo.height}
         />
 
-        <div className="absolute top-4 left-4 z-40 rounded bg-black/60 px-2 py-1 text-xs font-bold text-white backdrop-blur-md animate-in fade-in zoom-in-95 duration-200 pointer-events-none select-none">
+        <div className="absolute top-4 left-4 z-40 rounded bg-background/60 px-2 py-1 text-xs font-bold text-foreground backdrop-blur-md animate-in fade-in zoom-in-95 duration-200 pointer-events-none select-none">
           {!isModified || showOriginal ? "ORIGINAL" : "FILTER"}
         </div>
       </div>
