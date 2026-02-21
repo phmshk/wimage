@@ -95,6 +95,7 @@ async function runFilterBenchmark(id: string, payload: FilterPayload) {
   for (let y = 0; y < height; y += CHUNK_HEIGHT) {
     for (let x = 0; x < width; x += CHUNK_WIDTH) {
       if (isCancelled) return;
+
       const currentChunkW = Math.min(CHUNK_WIDTH, width - x); //
       const currentChunkH = Math.min(CHUNK_HEIGHT, height - y); //
 
@@ -159,8 +160,7 @@ async function runFilterBenchmark(id: string, payload: FilterPayload) {
           },
         });
 
-        // uncomment to show "live progress" of filter applying
-        // await new Promise((resolve) => setTimeout(resolve, 0));
+        await new Promise((resolve) => setTimeout(resolve, 0));
         lastYieldTime = performance.now();
       }
     }

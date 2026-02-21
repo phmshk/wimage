@@ -67,22 +67,22 @@ export const CanvasArea = () => {
 
   return (
     <div className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-lg border bg-background/50 backdrop-blur-sm shadow-sm md:p-4">
-      <div
-        className={`absolute inset-0 z-50 flex flex-col items-center justify-center bg-background/40 text-foreground backdrop-blur-md transition-opacity duration-300 ${
-          isProcessing
-            ? "opacity-100 pointer-events-auto"
-            : "opacity-0 pointer-events-none"
-        }`}
-      >
-        {isProcessing && (
-          <>
-            <LoaderCircle className="h-12 w-12 animate-spin text-primary-foreground" />
-            <p className="mt-4 text-lg font-medium tracking-wide animate-pulse">
-              Processing...
-            </p>
-          </>
-        )}
-      </div>
+      {/* <div */}
+      {/*   className={`absolute inset-0 z-50 flex flex-col items-center justify-center bg-background/40 text-foreground backdrop-blur-md transition-opacity duration-300 ${ */}
+      {/*     isProcessing */}
+      {/*       ? "opacity-100 pointer-events-auto" */}
+      {/*       : "opacity-0 pointer-events-none" */}
+      {/*   }`} */}
+      {/* > */}
+      {/*   {isProcessing && ( */}
+      {/*     <> */}
+      {/*       <LoaderCircle className="h-12 w-12 animate-spin text-primary-foreground" /> */}
+      {/*       <p className="mt-4 text-lg font-medium tracking-wide animate-pulse"> */}
+      {/*         Processing... */}
+      {/*       </p> */}
+      {/*     </> */}
+      {/*   )} */}
+      {/* </div> */}
       {isModified && !isProcessing && (
         <div className="absolute top-4 right-4 z-50 flex flex-col items-end gap-2 animate-in fade-in duration-300 pointer-events-none">
           <Button

@@ -16,7 +16,7 @@ export const CHUNK_WIDTH = 256;
 export const CHUNK_HEIGHT = 256;
 export const PX_SIZE = 4;
 export const CHUNK_PADDING = 2;
-export const FRAME_BUDGET_MS = 200; // delay to update canvas and send progress
+export const FRAME_BUDGET_MS = 5000; // delay to update canvas and send progress
 
 export const jsFilters: Record<FilterType, FilterProcessFn> = {
   grayscale: applyGrayscale,
