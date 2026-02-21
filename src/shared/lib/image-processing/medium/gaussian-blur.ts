@@ -1,5 +1,5 @@
-import { getPixelIndex } from "../../helpers";
-import type { FilterProcessFn } from "../../types";
+import { getPixelIndex } from "../helpers";
+import type { FilterProcessFn } from "../types";
 
 export const applyGaussianBlur: FilterProcessFn = (
   pixels,

@@ -1,217 +1,194 @@
+import type {
+  FilterPayload,
+  WorkerRequest,
+  WorkerResponse,
+} from "@/shared/lib/worker";
+
 import {
-  applyBilateral,
-  applyGaussianBlur,
-  applyGrayscale,
-  applyInversion,
-  applyKuwahara,
-  applyMedian,
-  applySepia,
-  applySharpen,
-  applySobel,
-} from "@/shared/lib/image-processing";
-import type { WorkerRequest, WorkerResponse } from "@/shared/lib/worker";
-import { applyFilterAndCrop, getChunkWithPadding } from "./model/helpers";
-import {
-  PX_SIZE,
   CHUNK_HEIGHT,
-  CHUNK_WIDTH,
   CHUNK_PADDING,
+  CHUNK_WIDTH,
+  FRAME_BUDGET_MS,
+  jsFilters,
 } from "./model/constants";
 
-self.onmessage = (e: MessageEvent<WorkerRequest>) => {
-  const { id, type, buffer, payload } = e.data;
-  const start = performance.now();
+let offscreenCtx: OffscreenCanvasRenderingContext2D | null = null;
+
+let stagingCanvas: OffscreenCanvas | null = null;
+let stagingCtx: OffscreenCanvasRenderingContext2D | null = null;
+let pendingImageData: {
+  bitmap: ImageBitmap;
+  width: number;
+  height: number;
+} | null = null;
+let isCancelled = false;
+
+self.onmessage = async (e: MessageEvent<WorkerRequest>) => {
+  const { type, id, payload, canvas, imageData } = e.data;
 
   try {
-    if (type === "init") return;
-
-    if (type === "ping") {
-      self.postMessage({ id, success: true } as WorkerResponse);
+    if (type === "cancel_filter") {
+      isCancelled = true;
       return;
     }
 
-    if (type === "apply_filter") {
-      if (!buffer || !payload) {
-        throw new Error("No buffer or payload provided");
+    if (type === "init_canvas" && canvas) {
+      offscreenCtx = canvas.getContext("2d", { willReadFrequently: true });
+      if (pendingImageData) {
+        applyImageToCanvas(pendingImageData);
+        pendingImageData = null;
       }
-
-      const { filterName, width, height, options } = payload;
-
-      const finalBuffer = new Uint8ClampedArray(width * height * PX_SIZE);
-      const padding = options?.radius
-        ? Math.ceil(options.radius)
-        : CHUNK_PADDING;
-      const totalChunks =
-        Math.ceil(width / CHUNK_WIDTH) * Math.ceil(height / CHUNK_HEIGHT);
-      let processedChunks = 0;
-
-      for (let y = 0; y < height; y += CHUNK_HEIGHT) {
-        for (let x = 0; x < width; x += CHUNK_WIDTH) {
-          const currChunkWidth = Math.min(CHUNK_WIDTH, width - x);
-          const currChunkHeight = Math.min(CHUNK_HEIGHT, height - y);
-
-          const paddedChunk = getChunkWithPadding(
-            x,
-            y,
-            width,
-            height,
-            buffer,
-            currChunkWidth,
-            currChunkHeight,
-            padding
-          );
-
-          let resultChunk: Uint8ClampedArray;
-
-          switch (filterName) {
-            case "grayscale":
-              resultChunk = applyFilterAndCrop(
-                paddedChunk,
-                applyGrayscale,
-                currChunkWidth,
-                currChunkHeight,
-                padding,
-                options
-              );
-              break;
-            case "inversion":
-              resultChunk = applyFilterAndCrop(
-                paddedChunk,
-                applyInversion,
-                currChunkWidth,
-                currChunkHeight,
-                padding,
-                options
-              );
-              break;
-            case "sepia":
-              resultChunk = applyFilterAndCrop(
-                paddedChunk,
-                applySepia,
-                currChunkWidth,
-                currChunkHeight,
-                padding,
-                options
-              );
-              break;
-            case "gaussian-blur":
-              resultChunk = applyFilterAndCrop(
-                paddedChunk,
-                applyGaussianBlur,
-                currChunkWidth,
-                currChunkHeight,
-                padding,
-                options
-              );
-              break;
-            case "sobel":
-              resultChunk = applyFilterAndCrop(
-                paddedChunk,
-                applySobel,
-                currChunkWidth,
-                currChunkHeight,
-                padding,
-                options
-              );
-              break;
-            case "sharpen":
-              resultChunk = applyFilterAndCrop(
-                paddedChunk,
-                applySharpen,
-
-                currChunkWidth,
-                currChunkHeight,
-                padding,
-                options
-              );
-              break;
-            case "median":
-              resultChunk = applyFilterAndCrop(
-                paddedChunk,
-                applyMedian,
-                currChunkWidth,
-                currChunkHeight,
-                padding,
-                options
-              );
-              break;
-            case "kuwahara":
-              resultChunk = applyFilterAndCrop(
-                paddedChunk,
-                applyKuwahara,
-                currChunkWidth,
-                currChunkHeight,
-                padding,
-                options
-              );
-              break;
-            case "bilateral":
-              resultChunk = applyFilterAndCrop(
-                paddedChunk,
-                applyBilateral,
-                currChunkWidth,
-                currChunkHeight,
-                padding,
-                options
-              );
-              break;
-            default:
-              throw new Error(`Unknown filter: ${filterName}`);
-          }
-
-          for (let cy = 0; cy < currChunkHeight; cy++) {
-            const destStart = ((y + cy) * width + x) * PX_SIZE;
-            const srcStart = cy * currChunkWidth * PX_SIZE;
-            const rowBytes = currChunkWidth * PX_SIZE;
-
-            finalBuffer.set(
-              resultChunk.subarray(srcStart, srcStart + rowBytes),
-              destStart
-            );
-          }
-
-          const transfer: Transferable[] = resultChunk
-            ? [resultChunk.buffer]
-            : [];
-
-          processedChunks++;
-
-          const response: WorkerResponse = {
-            id,
-            success: true,
-            type: "processing",
-            chunk: {
-              data: resultChunk,
-              width: currChunkWidth,
-              height: currChunkHeight,
-              x,
-              y,
-              progress: { processed: processedChunks, total: totalChunks },
-            },
-          };
-          self.postMessage(response, { transfer });
-        }
-      }
-
-      const end = performance.now();
-
-      const response: WorkerResponse = {
-        id,
-        type: "done",
-        success: true,
-        buffer: finalBuffer,
-        metrics: { computeTime: end - start },
-      };
-
-      const transfer: Transferable[] = finalBuffer ? [finalBuffer.buffer] : [];
-
-      self.postMessage(response, { transfer });
+      return;
     }
-  } catch (e) {
-    self.postMessage({
-      id,
+
+    if (type === "set_image" && imageData) {
+      if (!offscreenCtx) {
+        pendingImageData = imageData;
+        return;
+      }
+      applyImageToCanvas(imageData);
+
+      return;
+    }
+
+    if (type === "apply_filter" && id && payload) {
+      isCancelled = false;
+      await runFilterBenchmark(id, payload);
+      return;
+    }
+  } catch (error) {
+    const errResponse: WorkerResponse = {
+      id: id || "unknown",
+      type: "error",
       success: false,
-      error: e instanceof Error ? e.message : "Unknown error",
-    } as WorkerResponse);
+      error: (error as Error).message || "Unknown worker error",
+    };
+    self.postMessage(errResponse);
   }
 };
+
+async function runFilterBenchmark(id: string, payload: FilterPayload) {
+  if (!offscreenCtx) throw new Error("Canvas not ready");
+
+  const { width, height, filterName, options } = payload;
+
+  const engine: "js" | "wasm" = "js";
+
+  const padding = options?.radius ?? CHUNK_PADDING;
+
+  if (
+    !stagingCanvas ||
+    stagingCanvas.width !== width ||
+    stagingCanvas.height !== height
+  ) {
+    stagingCanvas = new OffscreenCanvas(width, height);
+    stagingCtx = stagingCanvas.getContext("2d", { willReadFrequently: true });
+  }
+  stagingCtx!.drawImage(offscreenCtx.canvas, 0, 0);
+
+  let processedPixels = 0;
+  const totalPixels = width * height;
+
+  const startTime = performance.now();
+  let lastYieldTime = performance.now();
+
+  for (let y = 0; y < height; y += CHUNK_HEIGHT) {
+    for (let x = 0; x < width; x += CHUNK_WIDTH) {
+      if (isCancelled) return;
+
+      const currentChunkW = Math.min(CHUNK_WIDTH, width - x); //
+      const currentChunkH = Math.min(CHUNK_HEIGHT, height - y); //
+
+      // native padding calculation
+      const paddedWidth = currentChunkW + padding * 2;
+      const paddedHeight = currentChunkH + padding * 2;
+
+      const paddedImageData = stagingCtx!.getImageData(
+        x - padding,
+        y - padding,
+        paddedWidth,
+        paddedHeight
+      );
+
+      if (engine === "js") {
+        const filterFn = jsFilters[filterName];
+        if (!filterFn) {
+          throw new Error(
+            `Filter "${filterName}" is not implemented in JS engine.`
+          );
+        }
+
+        const resultPixels = filterFn(
+          paddedImageData.data,
+          paddedWidth,
+          paddedHeight,
+          options
+        );
+
+        if (resultPixels && resultPixels !== paddedImageData.data) {
+          paddedImageData.data.set(resultPixels);
+        }
+      } else if (engine === "wasm") {
+        console.log("wasm is not implemented yet");
+      }
+
+      // native crop
+      offscreenCtx.putImageData(
+        paddedImageData,
+        x - padding,
+        y - padding,
+        padding,
+        padding,
+        currentChunkW,
+        currentChunkH
+      );
+
+      processedPixels += currentChunkW * currentChunkH;
+
+      const now = performance.now();
+      if (now - lastYieldTime > FRAME_BUDGET_MS) {
+        self.postMessage({
+          id,
+          type: "processing",
+          success: true,
+          chunk: {
+            x,
+            y,
+            width: currentChunkW,
+            height: currentChunkH,
+            progress: { processed: processedPixels, total: totalPixels },
+          },
+        });
+
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        lastYieldTime = performance.now();
+      }
+    }
+  }
+
+  const endTime = performance.now();
+
+  self.postMessage({
+    id,
+    type: "done",
+    success: true,
+    metrics: {
+      computeTime: endTime - startTime,
+    },
+  });
+}
+
+function applyImageToCanvas(imageData: {
+  bitmap: ImageBitmap;
+  width: number;
+  height: number;
+}) {
+  const { bitmap, width, height } = imageData;
+
+  offscreenCtx!.canvas.width = width;
+  offscreenCtx!.canvas.height = height;
+
+  offscreenCtx!.drawImage(bitmap, 0, 0);
+
+  bitmap.close();
+}

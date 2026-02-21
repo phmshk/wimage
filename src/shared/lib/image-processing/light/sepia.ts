@@ -1,4 +1,4 @@
-import type { FilterProcessFn } from "../../types";
+import type { FilterProcessFn } from "../types";
 
 export const applySepia: FilterProcessFn = (pixels) => {
   for (let i = 0; i < pixels.length; i += 4) {

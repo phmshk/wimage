@@ -10,9 +10,9 @@ export class WorkerHost {
   private pendingRequests = new Map<
     string,
     {
-      onProgress?: (chunk: ChunkData) => void;
       resolve: (res: WorkerResponse) => void;
       reject: (reason: unknown) => void;
+      onProgress?: (chunk: ChunkData) => void;
     }
   >();
   private currentRequestId: string | null = null;
@@ -38,11 +38,86 @@ export class WorkerHost {
     return this.worker;
   }
 
+  public initOffscreen(canvas: OffscreenCanvas): void {
+    this.getWorker().postMessage({ type: "init_canvas", canvas }, [canvas]);
+  }
+
+  public setImage(bitmap: ImageBitmap, width: number, height: number): void {
+    const worker = this.getWorker();
+    worker.postMessage(
+      { type: "set_image", imageData: { bitmap, width, height } },
+      [bitmap]
+    );
+  }
+
+  public processImage(
+    payload: FilterPayload,
+    onProgress?: (chunk: ChunkData) => void
+  ): Promise<WorkerResponse> {
+    return new Promise((resolve, reject) => {
+      const id = crypto.randomUUID();
+
+      if (this.currentRequestId) {
+        this.abortCurrTask();
+      }
+
+      this.currentRequestId = id;
+      this.pendingRequests.set(id, { resolve, reject, onProgress });
+
+      const request: WorkerRequest = {
+        id,
+        type: "apply_filter",
+        payload,
+      };
+
+      try {
+        this.getWorker().postMessage(request);
+      } catch (e) {
+        this.pendingRequests.delete(id);
+        reject(e);
+        this.currentRequestId = null;
+      }
+    });
+  }
+
+  public abortCurrTask() {
+    this.cancelProcessing();
+    // if (!this.worker) return;
+    //
+    // this.worker.terminate();
+    // this.worker = null;
+    //
+    // for (const [_, req] of this.pendingRequests) {
+    //   req.reject(new Error("Worker terminated"));
+    // }
+    //
+    // this.pendingRequests.clear();
+    // this.currentRequestId = null;
+  }
+
+  private cancelProcessing() {
+    if (this.currentRequestId) {
+      this.getWorker().postMessage({
+        type: "cancel_filter",
+        id: this.currentRequestId,
+      });
+      const req = this.pendingRequests.get(this.currentRequestId);
+      req?.reject(new Error("Cancelled"));
+      this.pendingRequests.delete(this.currentRequestId);
+      this.currentRequestId = null;
+    }
+  }
+
   private handleMessage(event: MessageEvent<WorkerResponse>) {
     const { id, success, type, error, chunk } = event.data;
 
-    const request = this.pendingRequests.get(id);
+    if (error) {
+      console.error(error);
+    }
 
+    if (!id) return;
+
+    const request = this.pendingRequests.get(id);
     if (!request) return;
 
     if (!success) {
@@ -68,53 +143,8 @@ export class WorkerHost {
 
   private handleError(e: ErrorEvent) {
     console.error("Worker global error:", e);
-    this.terminate();
+    this.abortCurrTask();
     this.currentRequestId = null;
-  }
-
-  public processImage(
-    imageData: Uint8ClampedArray,
-    payload: FilterPayload,
-    onProgress?: (chunk: ChunkData) => void
-  ): Promise<WorkerResponse> {
-    return new Promise((resolve, reject) => {
-      const id = crypto.randomUUID();
-
-      if (this.currentRequestId) {
-        this.terminate();
-      }
-
-      this.currentRequestId = id;
-      this.pendingRequests.set(id, { resolve, reject, onProgress });
-
-      const request: WorkerRequest = {
-        id,
-        type: "apply_filter",
-        buffer: imageData,
-        payload,
-      };
-
-      try {
-        this.getWorker().postMessage(request, [imageData.buffer]);
-      } catch (e) {
-        this.pendingRequests.delete(id);
-        reject(e);
-        this.currentRequestId = null;
-      }
-    });
-  }
-
-  public terminate() {
-    if (!this.worker) return;
-
-    this.worker.terminate();
-    this.worker = null;
-
-    for (const [_, req] of this.pendingRequests) {
-      req.reject(new Error("Worker terminated"));
-    }
-
-    this.pendingRequests.clear();
   }
 }
 

@@ -1,46 +1,52 @@
-import { useImageActions } from "@/entities/image";
+import { useImageActions, useImageStatus } from "@/entities/image";
 import { notify } from "@/shared/lib/notifications";
 import { Button } from "@/shared/ui/components/ui/button";
-import { Upload } from "lucide-react";
-import type { ChangeEvent } from "react";
+import { Loader2, Upload } from "lucide-react";
+import { useState, type ChangeEvent } from "react";
+import { normalizeImageFile, validateImage } from "../model/helpers";
 
 export const ImageUpload = () => {
   const { setImage } = useImageActions();
+  const status = useImageStatus();
+  const [isUploading, setIsUploading] = useState(false);
+
+  const isDisabled = status === "loading" || status === "processing";
 
   const handleFile = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const fileNameWithoutExt = file.name.replace(/\.[^/.]+$/, "");
+    if (!validateImage(file)) {
+      e.target.value = "";
+      return;
+    }
+    try {
+      setIsUploading(true);
 
-    e.target.value = "";
+      const { blob, filename: safeFilename } = await normalizeImageFile(file);
 
-    const img = new Image();
-    img.src = URL.createObjectURL(file);
+      const cleanFilename = safeFilename.replace(/\.[^/.]+$/, "");
 
-    img.onload = () => {
-      const canvas = document.createElement("canvas");
-      canvas.width = img.width;
-      canvas.height = img.height;
+      const [bitmapUI, bitmapWorker] = await Promise.all([
+        createImageBitmap(blob),
+        createImageBitmap(blob),
+      ]);
 
-      const context = canvas.getContext("2d");
-      if (!context) return;
+      setImage({
+        bitmap: bitmapUI,
+        workerBitmap: bitmapWorker,
+        width: bitmapUI.width,
+        height: bitmapUI.height,
+        filename: cleanFilename,
+      });
 
-      context.drawImage(img, 0, 0);
-      try {
-        const imgData = context.getImageData(0, 0, img.width, img.height);
-        setImage(imgData.data, img.width, img.height, fileNameWithoutExt);
-      } catch (err) {
-        notify.error("Failed to get image data", err);
-      } finally {
-        URL.revokeObjectURL(img.src);
-      }
-    };
-
-    img.onerror = () => {
-      URL.revokeObjectURL(img.src);
-      notify.error("Failed to load image");
-    };
+      notify.success("Image loaded successfully");
+    } catch (err) {
+      notify.error(`Failed to load: ${(err as Error).message}`);
+    } finally {
+      setIsUploading(false);
+      e.target.value = "";
+    }
   };
 
   return (
@@ -48,14 +54,28 @@ export const ImageUpload = () => {
       <input
         id="image-upload"
         type="file"
-        accept="image/*"
+        accept="image/*,.heic,.heif"
         className="hidden"
         onChange={handleFile}
       />
-      <Button variant="default" className="w-full" asChild>
-        <label htmlFor="image-upload" className="cursor-pointer">
-          <Upload className="mr-2 h-4 w-4" />
-          Upload Image
+      <Button
+        variant="default"
+        className="w-full"
+        disabled={isDisabled}
+        asChild
+      >
+        <label htmlFor="image-upload" className="cursor-pointer font-medium">
+          {isUploading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Uploading...
+            </>
+          ) : (
+            <>
+              <Upload className="mr-2 h-4 w-4" />
+              Upload Image
+            </>
+          )}
         </label>
       </Button>
     </>
