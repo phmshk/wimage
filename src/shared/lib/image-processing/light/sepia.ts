@@ -1,14 +1,19 @@
 import type { FilterProcessFn } from "../types";
 
 export const applySepia: FilterProcessFn = (pixels) => {
-  for (let i = 0; i < pixels.length; i += 4) {
+  const length = pixels.length;
+  for (let i = 0; i < length; i += 4) {
     const r = pixels[i];
     const g = pixels[i + 1];
     const b = pixels[i + 2];
 
-    pixels[i] = r * 0.393 + g * 0.769 + b * 0.189;
-    pixels[i + 1] = r * 0.349 + g * 0.686 + b * 0.168;
-    pixels[i + 2] = r * 0.272 + g * 0.534 + b * 0.131;
+    const tr = (r * 402 + g * 787 + b * 193) >> 10;
+    const tg = (r * 357 + g * 702 + b * 172) >> 10;
+    const tb = (r * 278 + g * 547 + b * 134) >> 10;
+
+    pixels[i] = tr > 255 ? 255 : tr;
+    pixels[i + 1] = tg > 255 ? 255 : tg;
+    pixels[i + 2] = tb > 255 ? 255 : tb;
   }
   return pixels;
 };

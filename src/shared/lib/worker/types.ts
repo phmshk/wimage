@@ -43,6 +43,7 @@ export interface WorkerRequest {
     height: number;
   };
   cancelBuffer?: SharedArrayBuffer | undefined;
+  engine: "js" | "wasm";
 }
 
 export interface ChunkData {
