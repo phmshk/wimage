@@ -148,8 +148,6 @@ async function runFilterBenchmark(
           paddedImageData.data.set(resultPixels);
         }
       } else if (engine === "wasm") {
-        const t0 = performance.now();
-
         const resultPixels = wasmHost.applyFilter(
           filterName,
           paddedImageData.data,
@@ -157,9 +155,9 @@ async function runFilterBenchmark(
           paddedHeight,
           padding
         );
-        totalCoreTime += performance.now() - t0;
+        totalCoreTime += resultPixels.pureComputeTime;
 
-        paddedImageData.data.set(resultPixels);
+        paddedImageData.data.set(resultPixels.data);
       }
 
       // native crop
@@ -199,17 +197,14 @@ async function runFilterBenchmark(
   }
 
   const endTime = performance.now();
-  console.log(
-    `🚀 [${engine.toUpperCase()}] "${filterName}" Core Time: ${totalCoreTime.toFixed(2)}ms ` +
-      `(Total with overhead: ${(endTime - startTime).toFixed(2)}ms)`
-  );
 
   self.postMessage({
     id,
     type: "done",
     success: true,
     metrics: {
-      computeTime: endTime - startTime,
+      computeTime: totalCoreTime,
+      totalTime: endTime - startTime,
     },
   });
 }

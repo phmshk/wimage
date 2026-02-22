@@ -7,7 +7,6 @@ import { useShallow } from "zustand/react/shallow";
 import { subscribeWithSelector } from "zustand/middleware";
 import type { ChunkData } from "@/shared/lib/worker/types";
 import { notify } from "@/shared/lib/notifications";
-import { formatTime } from "@/shared/lib/utils";
 import { useEditorStore } from "@/entities/editor/model/store";
 
 export const useImageStore = create<ImageState>()(
@@ -79,7 +78,8 @@ export const useImageStore = create<ImageState>()(
           });
           notify.success(
             "Filter Applied",
-            `Last Operation Time: ${formatTime(response.metrics?.computeTime)}`
+            `Core Time: ${response.metrics.computeTime.toFixed(2)}ms\n` +
+              `Total with overhead: ${response.metrics.totalTime.toFixed(2)}ms `
           );
         } else {
           throw new Error(response.error);

@@ -5,6 +5,7 @@ export const notify = {
     toast.success(title, {
       description,
       duration: duration ?? 3000,
+      descriptionClassName: "whitespace-pre-line",
     });
   },
 

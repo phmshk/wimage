@@ -38,7 +38,7 @@ export class WasmHost {
     width: number,
     height: number,
     radiusOrPadding: number
-  ): Uint8ClampedArray {
+  ): { data: Uint8ClampedArray; pureComputeTime: number } {
     if (!this.wasmModule) {
       throw new Error(
         "WASM environment is not initialized. Call init() first."
@@ -62,6 +62,7 @@ export class WasmHost {
 
     let resultView = pixelsView;
 
+    const t0 = performance.now();
     switch (filterName) {
       case "grayscale":
         this.wasmModule._apply_grayscale(this.pixelsPtr, width, height);
@@ -141,8 +142,10 @@ export class WasmHost {
           `WASM implementation for filter "${filterName}" is missing.`
         );
     }
+    const t1 = performance.now();
+    const pureComputeTime = t1 - t0;
 
-    return resultView.subarray(0, currentByteSize);
+    return { data: resultView.subarray(0, currentByteSize), pureComputeTime };
   }
 }
 
