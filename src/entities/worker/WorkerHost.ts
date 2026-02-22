@@ -32,7 +32,6 @@ export class WorkerHost {
     this.worker = new Worker(new URL("./image.worker.ts", import.meta.url), {
       type: "module",
     });
-
     this.worker.onmessage = this.handleMessage.bind(this);
     this.worker.onerror = this.handleError.bind(this);
 
@@ -53,6 +52,7 @@ export class WorkerHost {
 
   public processImage(
     payload: FilterPayload,
+    engine: "js" | "wasm",
     onProgress?: (chunk: ChunkData) => void
   ): Promise<WorkerResponse> {
     return new Promise((resolve, reject) => {
@@ -74,13 +74,19 @@ export class WorkerHost {
         cancelFlag[0] = 0; // 0 - works, 1 - cancel
       }
 
-      this.pendingRequests.set(id, { resolve, reject, onProgress, cancelFlag });
+      this.pendingRequests.set(id, {
+        resolve,
+        reject,
+        onProgress,
+        cancelFlag,
+      });
 
       const request: WorkerRequest = {
         id,
         type: "apply_filter",
         payload,
         cancelBuffer,
+        engine,
       };
 
       try {
@@ -112,7 +118,6 @@ export class WorkerHost {
         type: "cancel_filter",
         id: this.currentRequestId,
       });
-      req?.reject(new Error("Cancelled"));
       this.pendingRequests.delete(this.currentRequestId);
       this.currentRequestId = null;
     }

@@ -43,6 +43,7 @@ export interface WorkerRequest {
     height: number;
   };
   cancelBuffer?: SharedArrayBuffer | undefined;
+  engine: "js" | "wasm";
 }
 
 export interface ChunkData {
@@ -60,8 +61,7 @@ export interface WorkerResponse {
   error?: string;
   chunk?: ChunkData;
   type?: "processing" | "done" | "image_ready" | "error"; // status of dividing image into chunks and apllying filter to each chunk
-  metrics?: {
-    computeTime: number; // time an algorithm used for run
-    totalPixels?: number;
-  };
+  metrics?: Metrics;
 }
+
+export type Metrics = { computeTime: number; totalTime: number };

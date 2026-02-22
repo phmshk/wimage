@@ -9,3 +9,6 @@ export const FILTER_DESCRIPTIONS = {
   kuwahara: "Makes the photo look like an artistic oil painting.",
   bilateral: "Smooths surfaces (like skin) but keeps the edges sharp.",
 } as const;
+
+export const MIN_RADIUS = 1;
+export const MAX_RADIUS = 10;

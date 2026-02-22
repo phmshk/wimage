@@ -1,5 +1,6 @@
 import type { FilterOptions } from "@/shared/lib/image-processing";
 import type { FilterType } from "@/shared/lib/worker";
+import type { Metrics } from "@/shared/lib/worker/types";
 
 export interface ImageBitmapData {
   bitmap: ImageBitmap;
@@ -17,7 +18,7 @@ export interface ImageState {
 
   progress: number;
 
-  lastMetrics: { computeTime: number } | null;
+  lastMetrics: Metrics | null;
   error: string | null;
 
   setImage: (data: ImageBitmapData) => void;

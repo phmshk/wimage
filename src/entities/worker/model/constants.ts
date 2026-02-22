@@ -16,6 +16,7 @@ export const CHUNK_WIDTH = 256;
 export const CHUNK_HEIGHT = 256;
 export const PX_SIZE = 4;
 export const CHUNK_PADDING = 2;
+export const MAX_FILTER_RADIUS = 30;
 export const FRAME_BUDGET_MS = 1000; // delay to update canvas and send progress
 
 export const jsFilters: Record<FilterType, FilterProcessFn> = {

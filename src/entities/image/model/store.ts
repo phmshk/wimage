@@ -7,7 +7,7 @@ import { useShallow } from "zustand/react/shallow";
 import { subscribeWithSelector } from "zustand/middleware";
 import type { ChunkData } from "@/shared/lib/worker/types";
 import { notify } from "@/shared/lib/notifications";
-import { formatTime } from "@/shared/lib/utils";
+import { useEditorStore } from "@/entities/editor/model/store";
 
 export const useImageStore = create<ImageState>()(
   subscribeWithSelector((set, get) => ({
@@ -38,6 +38,7 @@ export const useImageStore = create<ImageState>()(
 
     applyFilter: async (filterName: FilterType, options?: FilterOptions) => {
       const { info, status } = get();
+      const engine = useEditorStore.getState().engine;
 
       if (status === "processing" || !info) return;
 
@@ -57,6 +58,7 @@ export const useImageStore = create<ImageState>()(
 
         const response = await workerHost.processImage(
           payload,
+          engine,
           (chunk: ChunkData) => {
             const currentProgress = get().progress;
             const percentage = Math.round(
@@ -76,7 +78,8 @@ export const useImageStore = create<ImageState>()(
           });
           notify.success(
             "Filter Applied",
-            `Last Operation Time: ${formatTime(response.metrics?.computeTime)}`
+            `Core Time: ${response.metrics.computeTime.toFixed(2)}ms\n` +
+              `Total with overhead: ${response.metrics.totalTime.toFixed(2)}ms `
           );
         } else {
           throw new Error(response.error);

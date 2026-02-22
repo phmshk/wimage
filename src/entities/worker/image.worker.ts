@@ -10,7 +10,9 @@ import {
   CHUNK_WIDTH,
   FRAME_BUDGET_MS,
   jsFilters,
+  MAX_FILTER_RADIUS,
 } from "./model/constants";
+import { wasmHost } from "./WasmHost";
 
 let offscreenCtx: OffscreenCanvasRenderingContext2D | null = null;
 
@@ -24,7 +26,7 @@ let pendingImageData: {
 let isCancelled = false;
 
 self.onmessage = async (e: MessageEvent<WorkerRequest>) => {
-  const { type, id, payload, canvas, imageData, cancelBuffer } = e.data;
+  const { type, id, payload, canvas, imageData, cancelBuffer, engine } = e.data;
 
   try {
     if (type === "cancel_filter") {
@@ -34,6 +36,7 @@ self.onmessage = async (e: MessageEvent<WorkerRequest>) => {
 
     if (type === "init_canvas" && canvas) {
       offscreenCtx = canvas.getContext("2d", { willReadFrequently: true });
+      await wasmHost.init(canvas.width, canvas.height, MAX_FILTER_RADIUS);
       if (pendingImageData) {
         applyImageToCanvas(pendingImageData);
         pendingImageData = null;
@@ -53,7 +56,7 @@ self.onmessage = async (e: MessageEvent<WorkerRequest>) => {
 
     if (type === "apply_filter" && id && payload) {
       isCancelled = false;
-      await runFilterBenchmark(id, payload, cancelBuffer);
+      await runFilterBenchmark(id, payload, engine, cancelBuffer);
       return;
     }
   } catch (error) {
@@ -70,15 +73,20 @@ self.onmessage = async (e: MessageEvent<WorkerRequest>) => {
 async function runFilterBenchmark(
   id: string,
   payload: FilterPayload,
+  engine: "js" | "wasm",
   cancelBuffer?: SharedArrayBuffer
 ) {
   if (!offscreenCtx) throw new Error("Canvas not ready");
 
   const { width, height, filterName, options } = payload;
 
-  const engine: "js" | "wasm" = "js";
-
-  const padding = options?.radius ?? CHUNK_PADDING;
+  let padding = options?.radius ?? CHUNK_PADDING;
+  if (engine === "wasm" && padding > MAX_FILTER_RADIUS) {
+    console.warn(
+      `[Worker] Radius ${padding} exceeds MAX_FILTER_RADIUS. Clamping to ${MAX_FILTER_RADIUS}.`
+    );
+    padding = MAX_FILTER_RADIUS;
+  }
 
   if (
     !stagingCanvas ||
@@ -97,6 +105,7 @@ async function runFilterBenchmark(
   let lastYieldTime = performance.now();
 
   const cancelFlag = cancelBuffer ? new Uint8Array(cancelBuffer) : null;
+  let totalCoreTime = 0;
 
   for (let y = 0; y < height; y += CHUNK_HEIGHT) {
     for (let x = 0; x < width; x += CHUNK_WIDTH) {
@@ -125,6 +134,7 @@ async function runFilterBenchmark(
             `Filter "${filterName}" is not implemented in JS engine.`
           );
         }
+        const t0 = performance.now();
 
         const resultPixels = filterFn(
           paddedImageData.data,
@@ -132,12 +142,22 @@ async function runFilterBenchmark(
           paddedHeight,
           options
         );
+        totalCoreTime += performance.now() - t0;
 
         if (resultPixels && resultPixels !== paddedImageData.data) {
           paddedImageData.data.set(resultPixels);
         }
       } else if (engine === "wasm") {
-        console.log("wasm is not implemented yet");
+        const resultPixels = wasmHost.applyFilter(
+          filterName,
+          paddedImageData.data,
+          paddedWidth,
+          paddedHeight,
+          padding
+        );
+        totalCoreTime += resultPixels.pureComputeTime;
+
+        paddedImageData.data.set(resultPixels.data);
       }
 
       // native crop
@@ -183,7 +203,8 @@ async function runFilterBenchmark(
     type: "done",
     success: true,
     metrics: {
-      computeTime: endTime - startTime,
+      computeTime: totalCoreTime,
+      totalTime: endTime - startTime,
     },
   });
 }

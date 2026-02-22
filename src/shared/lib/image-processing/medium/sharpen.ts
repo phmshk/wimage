@@ -1,32 +1,25 @@
-import { getPixelIndex } from "../helpers";
 import type { FilterProcessFn } from "../types";
 
 export const applySharpen: FilterProcessFn = (pixels, width, height) => {
   const output = new Uint8ClampedArray(pixels.length);
-  const kernel = [0, -1, 0, -1, 5, -1, 0, -1, 0];
+  const rowBytes = width * 4;
 
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
-      let r = 0,
-        g = 0,
-        b = 0;
+  for (let y = 1; y < height - 1; y++) {
+    let idx = (y * width + 1) * 4;
+    for (let x = 1; x < width - 1; x++, idx += 4) {
+      // c = 0 (Red), 1 (Green), 2 (Blue)
+      for (let c = 0; c < 3; c++) {
+        // kernel: [0, -1, 0, -1, 5, -1, 0, -1, 0]
+        const sum =
+          pixels[idx - rowBytes + c] * -1 + // top
+          pixels[idx - 4 + c] * -1 + // left
+          pixels[idx + c] * 5 + // center
+          pixels[idx + 4 + c] * -1 + // right
+          pixels[idx + rowBytes + c] * -1; // bottom
 
-      for (let ky = 0; ky < 3; ky++) {
-        for (let kx = 0; kx < 3; kx++) {
-          const idx = getPixelIndex(x + kx - 1, y + ky - 1, width, height);
-          const weight = kernel[ky * 3 + kx];
-
-          r += pixels[idx] * weight;
-          g += pixels[idx + 1] * weight;
-          b += pixels[idx + 2] * weight;
-        }
+        // inline clamp
+        output[idx + c] = sum < 0 ? 0 : sum > 255 ? 255 : sum;
       }
-
-      const dest = (y * width + x) * 4;
-      output[dest] = r;
-      output[dest + 1] = g;
-      output[dest + 2] = b;
-      output[dest + 3] = pixels[dest + 3]; // Copy original alpha
     }
   }
   return output;

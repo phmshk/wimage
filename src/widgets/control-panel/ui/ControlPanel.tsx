@@ -4,9 +4,15 @@ import { Button } from "@/shared/ui/components/ui/button";
 import { Play, RotateCcw } from "lucide-react";
 import { useState } from "react";
 import { FilterControl } from "./FilterControl";
-import { FILTER_DESCRIPTIONS } from "../model/filters-info";
+import {
+  FILTER_DESCRIPTIONS,
+  MAX_RADIUS,
+  MIN_RADIUS,
+} from "../model/filters-info";
 import { FilterInfo } from "./FilterInfo";
 import { useImageBitmap } from "@/entities/image/model/store";
+import { EngineSelector } from "@/features/change-engine";
+import { Separator } from "@/shared/ui/components/ui/separator";
 
 export const ControlPanel = () => {
   const { applyFilter, reset } = useImageActions();
@@ -18,10 +24,13 @@ export const ControlPanel = () => {
   const isDisabled = isBusy || !hasImage;
 
   // state for filter parameters
-  const [blurRadius, setBlurRadius] = useState([5]);
+  const [blurRadius, setBlurRadius] = useState([3]);
   const [medianRadius, setMedianRadius] = useState([3]);
   const [kuwaharaRadius, setKuwaharaRadius] = useState([3]);
-  const [bilateralRadius, setBilateralRadius] = useState([10]);
+  const [bilateralRadius, setBilateralRadius] = useState([3]);
+
+  if (lastMetrics) {
+  }
 
   return (
     <div className="relative flex flex-col gap-6 pb-10">
@@ -32,6 +41,27 @@ export const ControlPanel = () => {
           </span>
         </div>
       )}
+      {/* metrics */}
+      {lastMetrics && (
+        <div className="rounded-md bg-muted p-3 text-xs animate-in fade-in slide-in-from-bottom-2">
+          <div className="flex flex-col gap-1">
+            <span className="font-medium text-muted-foreground">
+              Last Operation Time:
+            </span>
+            <span className="font-mono text-sm font-bold text-primary">
+              {formatTime(lastMetrics.totalTime)}
+            </span>
+            <span className="font-medium text-muted-foreground">
+              Raw Compute Time:
+            </span>
+            <span className="font-mono text-sm font-bold text-primary">
+              {formatTime(lastMetrics.computeTime)}
+            </span>
+          </div>
+        </div>
+      )}
+
+      <Separator />
 
       <div
         className={cn(
@@ -39,6 +69,7 @@ export const ControlPanel = () => {
           !hasImage && "opacity-40 grayscale pointer-events-none"
         )}
       >
+        <EngineSelector />
         <div className="space-y-3">
           <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Basic Adjustments
@@ -106,8 +137,8 @@ export const ControlPanel = () => {
             description={FILTER_DESCRIPTIONS.gaussianBlur}
             value={blurRadius}
             onValueChange={setBlurRadius}
-            min={1}
-            max={50}
+            min={MIN_RADIUS}
+            max={MAX_RADIUS}
             step={1}
             onApply={() =>
               applyFilter("gaussian-blur", { radius: blurRadius[0] })
@@ -162,8 +193,8 @@ export const ControlPanel = () => {
             description={FILTER_DESCRIPTIONS.median}
             value={medianRadius}
             onValueChange={setMedianRadius}
-            min={1}
-            max={10}
+            min={MIN_RADIUS}
+            max={MAX_RADIUS}
             step={1}
             onApply={() => applyFilter("median", { radius: medianRadius[0] })}
             isDisabled={isDisabled}
@@ -171,12 +202,12 @@ export const ControlPanel = () => {
 
           {/* Kuwahara */}
           <FilterControl
-            label="Kuwahara (Oil Painting)"
+            label="Kuwahara"
             description={FILTER_DESCRIPTIONS.kuwahara}
             value={kuwaharaRadius}
             onValueChange={setKuwaharaRadius}
-            min={2}
-            max={12}
+            min={MIN_RADIUS}
+            max={MAX_RADIUS}
             step={1}
             onApply={() =>
               applyFilter("kuwahara", { radius: kuwaharaRadius[0] })
@@ -190,8 +221,8 @@ export const ControlPanel = () => {
             description={FILTER_DESCRIPTIONS.bilateral}
             value={bilateralRadius}
             onValueChange={setBilateralRadius}
-            min={1}
-            max={30}
+            min={MIN_RADIUS}
+            max={MAX_RADIUS}
             step={1}
             onApply={() =>
               applyFilter("bilateral", { radius: bilateralRadius[0] })
@@ -200,7 +231,7 @@ export const ControlPanel = () => {
           />
         </div>
 
-        <div className="h-px bg-border my-2" />
+        <Separator />
 
         <Button
           variant="destructive"
@@ -211,20 +242,6 @@ export const ControlPanel = () => {
           <RotateCcw className="mr-2 h-4 w-4" />
           Reset Original
         </Button>
-
-        {/* metrics */}
-        {lastMetrics && (
-          <div className="rounded-md bg-muted p-3 text-xs animate-in fade-in slide-in-from-bottom-2">
-            <div className="flex flex-col gap-1">
-              <span className="font-medium text-muted-foreground">
-                Last Operation Time:
-              </span>
-              <span className="font-mono text-sm font-bold text-primary">
-                {formatTime(lastMetrics.computeTime)}
-              </span>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
