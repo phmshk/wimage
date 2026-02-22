@@ -20,6 +20,7 @@ export const applySharpen: FilterProcessFn = (pixels, width, height) => {
         // inline clamp
         output[idx + c] = sum < 0 ? 0 : sum > 255 ? 255 : sum;
       }
+      output[idx + 3] = pixels[idx + 3];
     }
   }
   return output;
