@@ -13,3 +13,4 @@ coverage/
 .env.*
 
 public/
+routeTree.gen.ts

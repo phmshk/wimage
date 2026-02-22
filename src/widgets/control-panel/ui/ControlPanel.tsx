@@ -43,10 +43,10 @@ export const ControlPanel = () => {
       )}
       {/* metrics */}
       {lastMetrics && (
-        <div className="rounded-md bg-muted p-3 text-xs animate-in fade-in slide-in-from-bottom-2">
+        <div className="rounded-md p-3 text-xs animate-in fade-in slide-in-from-bottom-2 border bg-border">
           <div className="flex flex-col gap-1">
             <span className="font-medium text-muted-foreground">
-              Last Operation Time:
+              Total Time:
             </span>
             <span className="font-mono text-sm font-bold text-primary">
               {formatTime(lastMetrics.totalTime)}

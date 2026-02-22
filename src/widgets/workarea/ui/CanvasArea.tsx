@@ -66,7 +66,7 @@ export const CanvasArea = () => {
   }
 
   return (
-    <div className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-lg border bg-background/50 backdrop-blur-sm shadow-sm md:p-4">
+    <div className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-lg border bg-background/50 backdrop-blur-sm shadow-sm md:p-4 select-none">
       <div
         className={`absolute inset-0 z-50 flex flex-col items-center justify-center bg-background/40 text-foreground backdrop-blur-md transition-opacity duration-300 ${
           isProcessing
@@ -89,10 +89,11 @@ export const CanvasArea = () => {
             variant="secondary"
             size="icon"
             className={cn(
-              "h-10 w-10 rounded-full shadow-md transition-transform active:scale-95 touch-none pointer-events-auto",
+              "h-10 w-10 rounded-full shadow-md transition-transform active:scale-95 select-none touch-none pointer-events-auto",
               showOriginal &&
                 "bg-primary text-primary-foreground hover:bg-primary/90"
             )}
+            style={{ WebkitTouchCallout: "none" }}
             onPointerDown={(e) => {
               e.preventDefault();
               e.currentTarget.setPointerCapture(e.pointerId);
