@@ -1,10 +1,155 @@
-import type {
-  FilterOptions,
-  FilterProcessFn,
-} from "@/shared/lib/image-processing";
-import { PX_SIZE } from "./constants";
+import type { FilterOptions } from "@/shared/lib/image-processing";
+import type { FilterType, ComputeEngine } from "@/shared/lib/worker/types";
+import { wasmHost } from "../WasmHost";
+import {
+  CHUNK_PADDING,
+  MAX_FILTER_RADIUS,
+  CHUNK_HEIGHT,
+  CHUNK_WIDTH,
+  jsFilters,
+  FRAME_BUDGET_MS,
+} from "./constants";
 
-/**
+export interface ProcessChunksArgs {
+  sourceCtx: OffscreenCanvasRenderingContext2D;
+  width: number;
+  height: number;
+  filterName: FilterType;
+  engine: ComputeEngine;
+  options?: FilterOptions;
+  cancelFlag?: Uint8Array | null;
+  checkIsCancelled?: () => boolean;
+
+  // pinting to canvas
+  onChunkDone?: (
+    paddedImageData: ImageData,
+    x: number,
+    y: number,
+    currentChunkW: number,
+    currentChunkH: number,
+    padding: number
+  ) => void;
+
+  // progress bar callback
+  onProgressReport?: (processed: number, total: number) => void | Promise<void>;
+}
+
+export async function processImageChunks(args: ProcessChunksArgs) {
+  const {
+    sourceCtx,
+    width,
+    height,
+    filterName,
+    engine,
+    options,
+    cancelFlag,
+    checkIsCancelled,
+    onChunkDone,
+    onProgressReport,
+  } = args;
+
+  let padding = options?.radius ?? CHUNK_PADDING;
+  if (engine === "wasm" && padding > MAX_FILTER_RADIUS) {
+    console.warn(
+      `[Worker] Radius ${padding} exceeds MAX_FILTER_RADIUS. Clamping to ${MAX_FILTER_RADIUS}.`
+    );
+    padding = MAX_FILTER_RADIUS;
+  }
+
+  const totalPixels = width * height;
+  let processedPixels = 0;
+  let totalCoreTime = 0;
+
+  const startTime = performance.now();
+  let lastYieldTime = performance.now();
+
+  for (let y = 0; y < height; y += CHUNK_HEIGHT) {
+    for (let x = 0; x < width; x += CHUNK_WIDTH) {
+      if (
+        (cancelFlag && cancelFlag[0] === 1) ||
+        (checkIsCancelled && checkIsCancelled())
+      ) {
+        throw new Error("Cancelled");
+      }
+
+      const currentChunkW = Math.min(CHUNK_WIDTH, width - x);
+      const currentChunkH = Math.min(CHUNK_HEIGHT, height - y);
+
+      const paddedWidth = currentChunkW + padding * 2;
+      const paddedHeight = currentChunkH + padding * 2;
+
+      const paddedImageData = sourceCtx.getImageData(
+        x - padding,
+        y - padding,
+        paddedWidth,
+        paddedHeight
+      );
+
+      if (engine === "js") {
+        const filterFn = jsFilters[filterName];
+        if (!filterFn)
+          throw new Error(`Filter "${filterName}" is not implemented in JS.`);
+
+        const t0 = performance.now();
+        const resultPixels = filterFn(
+          paddedImageData.data,
+          paddedWidth,
+          paddedHeight,
+          options
+        );
+        totalCoreTime += performance.now() - t0;
+
+        if (resultPixels && resultPixels !== paddedImageData.data) {
+          paddedImageData.data.set(resultPixels);
+        }
+      } else if (engine === "wasm") {
+        const resultPixels = wasmHost.applyFilter(
+          filterName,
+          paddedImageData.data,
+          paddedWidth,
+          paddedHeight,
+          padding
+        );
+        totalCoreTime += resultPixels.pureComputeTime;
+        paddedImageData.data.set(resultPixels.data);
+      }
+
+      if (onChunkDone) {
+        onChunkDone(
+          paddedImageData,
+          x,
+          y,
+          currentChunkW,
+          currentChunkH,
+          padding
+        );
+      }
+
+      processedPixels += currentChunkW * currentChunkH;
+
+      const now = performance.now();
+      if (
+        now - lastYieldTime > FRAME_BUDGET_MS ||
+        processedPixels === totalPixels
+      ) {
+        if (onProgressReport) {
+          await onProgressReport(processedPixels, totalPixels);
+        }
+        if (typeof SharedArrayBuffer === "undefined") {
+          await new Promise((resolve) => setTimeout(resolve, 0));
+        }
+        lastYieldTime = performance.now();
+      }
+    }
+  }
+
+  return {
+    computeTime: totalCoreTime,
+    totalTime: performance.now() - startTime,
+  };
+}
+
+/* ==== Filters from previous version of application. Just dont want to delete them, because spent a lot of time makeng them :) ====
  * Extracts a specific chunk from an image data array
  * including an additional padding around the edges
  * @param startX - X coordinate of the top-left corner of the main chunk
@@ -16,7 +161,6 @@ import { PX_SIZE } from "./constants";
  * @param chunkHeight - height of the chunk (default: 256)
  * @param padding - number of extra pixels to include on each side (default: 2) !!!!!! if filter has radius in options it MUST be used as padding
  * * @returns new Uint8ClampedArray containing the padded chunk
- */
 export const getChunkWithPadding = (
   startX: number,
   startY: number,
@@ -78,7 +222,6 @@ export const getChunkWithPadding = (
   return chunkData;
 };
 
-/**
  * Processes a padded image chunk using a filter function and crops
  * the result back to the original chunk dimensions.
  * @param paddedChunk - input data array including padding
@@ -88,7 +231,6 @@ export const getChunkWithPadding = (
  * @param chunkHeight - height of the final chunk without padding
  * @param padding - size of the margin to be removed from all sides
  * @returns new Uint8ClampedArray of the exact chunk dimensions
- */
 export const applyFilterAndCrop = (
   paddedChunk: Uint8ClampedArray,
   filterFn: FilterProcessFn,
@@ -121,3 +263,5 @@ export const applyFilterAndCrop = (
 
   return cleanResult;
 };
+
+*/

@@ -1,6 +1,9 @@
 import type { FilterOptions } from "@/shared/lib/image-processing";
-import type { FilterType } from "@/shared/lib/worker";
-import type { Metrics } from "@/shared/lib/worker/types";
+import type {
+  Metrics,
+  FilterType,
+  ComputeEngine,
+} from "@/shared/lib/worker/types";
 
 export interface ImageBitmapData {
   bitmap: ImageBitmap;
@@ -24,6 +27,7 @@ export interface ImageState {
   setImage: (data: ImageBitmapData) => void;
   applyFilter: (
     filterName: FilterType,
+    engine: ComputeEngine,
     options?: FilterOptions
   ) => Promise<void>;
   reset: () => void;

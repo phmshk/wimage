@@ -1,13 +1,12 @@
-import type { ImageBitmapData, ImageState } from "./types";
 import { create } from "zustand";
-import type { FilterPayload, FilterType } from "@/shared/lib/worker";
-import { workerHost } from "@/entities/worker/WorkerHost";
-import type { FilterOptions } from "@/shared/lib/image-processing";
-import { useShallow } from "zustand/react/shallow";
 import { subscribeWithSelector } from "zustand/middleware";
-import type { ChunkData } from "@/shared/lib/worker/types";
+import { useShallow } from "zustand/react/shallow";
+
+import type { ImageBitmapData, ImageState } from "./types";
+import { workerHost } from "@/entities/worker/WorkerHost";
 import { notify } from "@/shared/lib/notifications";
-import { useEditorStore } from "@/entities/editor/model/store";
+import type { FilterOptions } from "@/shared/lib/image-processing";
+import type { FilterType, ComputeEngine } from "@/shared/lib/worker/types";
 
 export const useImageStore = create<ImageState>()(
   subscribeWithSelector((set, get) => ({
@@ -36,73 +35,76 @@ export const useImageStore = create<ImageState>()(
       workerHost.setImage(data.workerBitmap, data.width, data.height);
     },
 
-    applyFilter: async (filterName: FilterType, options?: FilterOptions) => {
+    applyFilter: async (
+      filterName: FilterType,
+      engine: ComputeEngine,
+      options?: FilterOptions
+    ) => {
       const { info, status } = get();
-      const engine = useEditorStore.getState().engine;
 
-      if (status === "processing" || !info) return;
+      if (!info) {
+        set({ error: "No image loaded", status: "error" });
+        return;
+      }
+      if (status === "processing") {
+        return;
+      }
 
       set({
         status: "processing",
         error: null,
         progress: 0,
+        lastMetrics: null,
       });
 
       try {
-        const payload: FilterPayload = {
-          filterName,
-          width: info.width,
-          height: info.height,
-          options,
-        };
-
-        const response = await workerHost.processImage(
-          payload,
+        const metrics = await workerHost.processImage(
+          { filterName, options, width: info.width, height: info.height },
           engine,
-          (chunk: ChunkData) => {
-            const currentProgress = get().progress;
-            const percentage = Math.round(
-              (chunk.progress.processed / chunk.progress.total) * 100
+          (progress) => {
+            const percent = Math.round(
+              (progress.processed / progress.total) * 100
             );
-            if (percentage !== currentProgress) {
-              set({ progress: percentage });
-            }
+            set({ progress: percent });
           }
         );
 
-        if (response.success && response.type === "done" && response.metrics) {
-          set({
-            status: "idle",
-            lastMetrics: response.metrics,
-            isModified: true,
-          });
-          notify.success(
-            "Filter Applied",
-            `Core Time: ${response.metrics.computeTime.toFixed(2)}ms\n` +
-              `Total with overhead: ${response.metrics.totalTime.toFixed(2)}ms `
-          );
-        } else {
-          throw new Error(response.error);
+        set({
+          status: "idle",
+          isModified: true,
+          lastMetrics: metrics,
+          progress: 100,
+        });
+      } catch (error) {
+        const errorMessage = (error as Error).message;
+
+        if (errorMessage === "Cancelled") {
+          set({ status: "idle", progress: 0 });
+          return;
         }
-      } catch (e) {
-        const errorMessage = (e as Error).message;
+
         set({
           status: "error",
-          error: errorMessage,
+          error: errorMessage || "Failed to apply filter",
           progress: 0,
         });
-        if (errorMessage === "Cancelled") return;
-        notify.error("Filter failed.", errorMessage, 8000);
+        notify.error(
+          "Filter failed.",
+          errorMessage || "Unknown error in worker",
+          8000
+        );
       }
     },
 
     reset: async () => {
       set({
+        status: "idle",
         error: null,
         progress: 0,
         lastMetrics: null,
         isModified: false,
       });
+
       const { bitmap, info } = get();
       if (bitmap && info) {
         const newWorkerBitmap = await createImageBitmap(bitmap);
@@ -123,9 +125,11 @@ export const useImageStore = create<ImageState>()(
 
       notify.warning(
         "Canceled",
-        "Operation was aborted by user. Filter was only partially applied! Reset image to its original state.",
+        "Operation was aborted by user. Image reset to its original state.",
         8000
       );
+
+      get().reset();
     },
   }))
 );
@@ -144,7 +148,7 @@ export const useImageActions = () =>
     useShallow((state) => ({
       setImage: state.setImage,
       applyFilter: state.applyFilter,
-      reset: state.reset,
+      resetToOriginal: state.reset,
       cancelProcessing: state.cancelProcessing,
     }))
   );

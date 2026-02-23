@@ -13,9 +13,10 @@ import { FilterInfo } from "./FilterInfo";
 import { useImageBitmap } from "@/entities/image/model/store";
 import { EngineSelector } from "@/features/change-engine";
 import { Separator } from "@/shared/ui/components/ui/separator";
+import { useEngine } from "@/entities/editor";
 
 export const ControlPanel = () => {
-  const { applyFilter, reset } = useImageActions();
+  const { applyFilter, resetToOriginal } = useImageActions();
   const lastMetrics = useMetrics();
   const status = useImageStatus();
   const hasImage = !!useImageBitmap();
@@ -23,14 +24,13 @@ export const ControlPanel = () => {
   const isBusy = status === "processing";
   const isDisabled = isBusy || !hasImage;
 
+  const engine = useEngine();
+
   // state for filter parameters
   const [blurRadius, setBlurRadius] = useState([3]);
   const [medianRadius, setMedianRadius] = useState([3]);
   const [kuwaharaRadius, setKuwaharaRadius] = useState([3]);
   const [bilateralRadius, setBilateralRadius] = useState([3]);
-
-  if (lastMetrics) {
-  }
 
   return (
     <div className="relative flex flex-col gap-6 pb-10">
@@ -80,7 +80,7 @@ export const ControlPanel = () => {
               <Button
                 disabled={isDisabled}
                 variant="outline"
-                onClick={() => applyFilter("grayscale")}
+                onClick={() => applyFilter("grayscale", engine)}
                 size="sm"
                 className="text-xs w-full"
               >
@@ -96,7 +96,7 @@ export const ControlPanel = () => {
               <Button
                 disabled={isDisabled}
                 variant="outline"
-                onClick={() => applyFilter("inversion")}
+                onClick={() => applyFilter("inversion", engine)}
                 size="sm"
                 className="text-xs w-full"
               >
@@ -112,7 +112,7 @@ export const ControlPanel = () => {
               <Button
                 disabled={isDisabled}
                 variant="outline"
-                onClick={() => applyFilter("sepia")}
+                onClick={() => applyFilter("sepia", engine)}
                 size="sm"
                 className="text-xs w-full"
               >
@@ -141,7 +141,7 @@ export const ControlPanel = () => {
             max={MAX_RADIUS}
             step={1}
             onApply={() =>
-              applyFilter("gaussian-blur", { radius: blurRadius[0] })
+              applyFilter("gaussian-blur", engine, { radius: blurRadius[0] })
             }
             isDisabled={isDisabled}
           />
@@ -157,7 +157,7 @@ export const ControlPanel = () => {
               variant="secondary"
               size="sm"
               className="h-8 px-3"
-              onClick={() => applyFilter("sharpen")}
+              onClick={() => applyFilter("sharpen", engine)}
             >
               <Play className="mr-1.5 h-3 w-3" /> Apply
             </Button>
@@ -174,7 +174,7 @@ export const ControlPanel = () => {
               variant="secondary"
               size="sm"
               className="h-8 px-3"
-              onClick={() => applyFilter("sobel")}
+              onClick={() => applyFilter("sobel", engine)}
             >
               <Play className="mr-1.5 h-3 w-3" /> Apply
             </Button>
@@ -196,7 +196,9 @@ export const ControlPanel = () => {
             min={MIN_RADIUS}
             max={MAX_RADIUS}
             step={1}
-            onApply={() => applyFilter("median", { radius: medianRadius[0] })}
+            onApply={() =>
+              applyFilter("median", engine, { radius: medianRadius[0] })
+            }
             isDisabled={isDisabled}
           />
 
@@ -210,7 +212,7 @@ export const ControlPanel = () => {
             max={MAX_RADIUS}
             step={1}
             onApply={() =>
-              applyFilter("kuwahara", { radius: kuwaharaRadius[0] })
+              applyFilter("kuwahara", engine, { radius: kuwaharaRadius[0] })
             }
             isDisabled={isDisabled}
           />
@@ -225,7 +227,7 @@ export const ControlPanel = () => {
             max={MAX_RADIUS}
             step={1}
             onApply={() =>
-              applyFilter("bilateral", { radius: bilateralRadius[0] })
+              applyFilter("bilateral", engine, { radius: bilateralRadius[0] })
             }
             isDisabled={isDisabled}
           />
@@ -236,7 +238,7 @@ export const ControlPanel = () => {
         <Button
           variant="destructive"
           className="w-full"
-          onClick={reset}
+          onClick={resetToOriginal}
           disabled={isDisabled}
         >
           <RotateCcw className="mr-2 h-4 w-4" />
