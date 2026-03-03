@@ -4,11 +4,7 @@ import { Button } from "@/shared/ui/components/ui/button";
 import { Play, RotateCcw } from "lucide-react";
 import { useState } from "react";
 import { FilterControl } from "./FilterControl";
-import {
-  FILTER_DESCRIPTIONS,
-  MAX_RADIUS,
-  MIN_RADIUS,
-} from "../model/filters-info";
+import { FILTERS_META } from "@/shared/config";
 import { FilterInfo } from "./FilterInfo";
 import { useImageBitmap } from "@/entities/image/model/store";
 import { EngineSelector } from "@/features/change-engine";
@@ -26,11 +22,24 @@ export const ControlPanel = () => {
 
   const engine = useEngine();
 
-  // state for filter parameters
-  const [blurRadius, setBlurRadius] = useState([3]);
-  const [medianRadius, setMedianRadius] = useState([3]);
-  const [kuwaharaRadius, setKuwaharaRadius] = useState([3]);
-  const [bilateralRadius, setBilateralRadius] = useState([3]);
+  const radiusUiDefaults = FILTERS_META["gaussian-blur"].ui?.radius ?? {
+    min: 1,
+    max: 10,
+    step: 1,
+  };
+
+  const [blurRadius, setBlurRadius] = useState([
+    FILTERS_META["gaussian-blur"].defaultOptions?.radius ?? 3,
+  ]);
+  const [medianRadius, setMedianRadius] = useState([
+    FILTERS_META.median.defaultOptions?.radius ?? 2,
+  ]);
+  const [kuwaharaRadius, setKuwaharaRadius] = useState([
+    FILTERS_META.kuwahara.defaultOptions?.radius ?? 6,
+  ]);
+  const [bilateralRadius, setBilateralRadius] = useState([
+    FILTERS_META.bilateral.defaultOptions?.radius ?? 2,
+  ]);
 
   return (
     <div className="relative flex flex-col gap-6 pb-10">
@@ -87,7 +96,7 @@ export const ControlPanel = () => {
                 Gray
               </Button>
               <div className="flex justify-center">
-                <FilterInfo text={FILTER_DESCRIPTIONS.grayscale} />
+                <FilterInfo text={FILTERS_META.grayscale.description} />
               </div>
             </div>
 
@@ -103,7 +112,7 @@ export const ControlPanel = () => {
                 Invert
               </Button>
               <div className="flex justify-center">
-                <FilterInfo text={FILTER_DESCRIPTIONS.inversion} />
+                <FilterInfo text={FILTERS_META.inversion.description} />
               </div>
             </div>
 
@@ -119,7 +128,7 @@ export const ControlPanel = () => {
                 Sepia
               </Button>
               <div className="flex justify-center">
-                <FilterInfo text={FILTER_DESCRIPTIONS.sepia} />
+                <FilterInfo text={FILTERS_META.sepia.description} />
               </div>
             </div>
           </div>
@@ -133,13 +142,13 @@ export const ControlPanel = () => {
 
           {/* Gaussian Blur */}
           <FilterControl
-            label="Gaussian Blur"
-            description={FILTER_DESCRIPTIONS.gaussianBlur}
+            label={FILTERS_META["gaussian-blur"].label}
+            description={FILTERS_META["gaussian-blur"].description}
             value={blurRadius}
             onValueChange={setBlurRadius}
-            min={MIN_RADIUS}
-            max={MAX_RADIUS}
-            step={1}
+            min={radiusUiDefaults.min}
+            max={radiusUiDefaults.max}
+            step={radiusUiDefaults.step}
             onApply={() =>
               applyFilter("gaussian-blur", engine, { radius: blurRadius[0] })
             }
@@ -150,7 +159,7 @@ export const ControlPanel = () => {
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center">
               <span className="text-sm font-medium">Sharpen</span>
-              <FilterInfo text={FILTER_DESCRIPTIONS.sharpen} />
+              <FilterInfo text={FILTERS_META.sharpen.description} />
             </div>
             <Button
               disabled={isDisabled}
@@ -167,7 +176,7 @@ export const ControlPanel = () => {
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center">
               <span className="text-sm font-medium">Sobel Detection</span>
-              <FilterInfo text={FILTER_DESCRIPTIONS.sobel} />
+              <FilterInfo text={FILTERS_META.sobel.description} />
             </div>
             <Button
               disabled={isDisabled}
@@ -189,13 +198,13 @@ export const ControlPanel = () => {
 
           {/* Median */}
           <FilterControl
-            label="Median"
-            description={FILTER_DESCRIPTIONS.median}
+            label={FILTERS_META.median.label}
+            description={FILTERS_META.median.description}
             value={medianRadius}
             onValueChange={setMedianRadius}
-            min={MIN_RADIUS}
-            max={MAX_RADIUS}
-            step={1}
+            min={radiusUiDefaults.min}
+            max={radiusUiDefaults.max}
+            step={radiusUiDefaults.step}
             onApply={() =>
               applyFilter("median", engine, { radius: medianRadius[0] })
             }
@@ -204,13 +213,13 @@ export const ControlPanel = () => {
 
           {/* Kuwahara */}
           <FilterControl
-            label="Kuwahara"
-            description={FILTER_DESCRIPTIONS.kuwahara}
+            label={FILTERS_META.kuwahara.label}
+            description={FILTERS_META.kuwahara.description}
             value={kuwaharaRadius}
             onValueChange={setKuwaharaRadius}
-            min={MIN_RADIUS}
-            max={MAX_RADIUS}
-            step={1}
+            min={radiusUiDefaults.min}
+            max={radiusUiDefaults.max}
+            step={radiusUiDefaults.step}
             onApply={() =>
               applyFilter("kuwahara", engine, { radius: kuwaharaRadius[0] })
             }
@@ -219,13 +228,13 @@ export const ControlPanel = () => {
 
           {/* Bilateral */}
           <FilterControl
-            label="Bilateral"
-            description={FILTER_DESCRIPTIONS.bilateral}
+            label={FILTERS_META.bilateral.label}
+            description={FILTERS_META.bilateral.description}
             value={bilateralRadius}
             onValueChange={setBilateralRadius}
-            min={MIN_RADIUS}
-            max={MAX_RADIUS}
-            step={1}
+            min={radiusUiDefaults.min}
+            max={radiusUiDefaults.max}
+            step={radiusUiDefaults.step}
             onApply={() =>
               applyFilter("bilateral", engine, { radius: bilateralRadius[0] })
             }

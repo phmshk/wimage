@@ -4,11 +4,13 @@ import { Button } from "@/shared/ui/components/ui/button";
 import { Loader2, Upload } from "lucide-react";
 import { useState, type ChangeEvent } from "react";
 import { normalizeImageFile, validateImage } from "../model/helpers";
+import { useBenchmarkActions } from "@/entities/benchmark";
 
 export const ImageUpload = () => {
   const { setImage } = useImageActions();
   const status = useImageStatus();
   const [isUploading, setIsUploading] = useState(false);
+  const { setResults, setStatus: setBenchmarkStatus } = useBenchmarkActions();
 
   const isDisabled = status === "loading" || status === "processing";
 
@@ -23,7 +25,11 @@ export const ImageUpload = () => {
     try {
       setIsUploading(true);
 
-      const { blob, filename: safeFilename } = await normalizeImageFile(file);
+      const {
+        blob,
+        filename: safeFilename,
+        size,
+      } = await normalizeImageFile(file);
 
       const cleanFilename = safeFilename.replace(/\.[^/.]+$/, "");
 
@@ -38,7 +44,10 @@ export const ImageUpload = () => {
         width: bitmapUI.width,
         height: bitmapUI.height,
         filename: cleanFilename,
+        size,
       });
+      setResults([]);
+      setBenchmarkStatus("idle");
 
       notify.success("Image loaded successfully");
     } catch (err) {

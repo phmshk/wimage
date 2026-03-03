@@ -86,13 +86,12 @@ export interface BenchmarkConfig {
   iterations: number;
   filters: FilterType[];
   engines: ComputeEngine[];
-  warmup: boolean;
 }
 
 export interface BenchmarkResult {
-  id: string;
-  filterName: FilterType;
-  engine: ComputeEngine;
-  benchmarkMetrics: BenchmarkMetrics;
-  iteration: number;
+  filterId: string;
+  filterName: string;
+  jsTimeMs?: number;
+  wasmTimeMs?: number;
+  iterations: number;
 }

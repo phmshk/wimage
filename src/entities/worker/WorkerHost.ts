@@ -8,7 +8,7 @@ import type {
   ComputeEngine,
   Metrics,
   ProcessingProgress,
-} from "@/shared/lib/worker/types";
+} from "@/shared/lib/worker";
 
 interface PendingRequest {
   resolve: (value: unknown) => void;

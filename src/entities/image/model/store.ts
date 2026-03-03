@@ -6,7 +6,7 @@ import type { ImageBitmapData, ImageState } from "./types";
 import { workerHost } from "@/entities/worker/WorkerHost";
 import { notify } from "@/shared/lib/notifications";
 import type { FilterOptions } from "@/shared/lib/image-processing";
-import type { FilterType, ComputeEngine } from "@/shared/lib/worker/types";
+import type { FilterType, ComputeEngine } from "@/shared/lib/worker";
 
 export const useImageStore = create<ImageState>()(
   subscribeWithSelector((set, get) => ({
@@ -25,6 +25,7 @@ export const useImageStore = create<ImageState>()(
           width: data.width,
           height: data.height,
           filename: data.filename,
+          size: data.size,
         },
         bitmap: data.bitmap,
         error: null,
@@ -129,7 +130,11 @@ export const useImageStore = create<ImageState>()(
         8000
       );
 
-      get().reset();
+      // guarantee that worker will be able to throw an error and pause the loop
+      // before getting new image
+      setTimeout(() => {
+        get().reset();
+      }, 50);
     },
   }))
 );

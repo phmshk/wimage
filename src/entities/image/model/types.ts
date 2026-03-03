@@ -1,9 +1,5 @@
 import type { FilterOptions } from "@/shared/lib/image-processing";
-import type {
-  Metrics,
-  FilterType,
-  ComputeEngine,
-} from "@/shared/lib/worker/types";
+import type { Metrics, FilterType, ComputeEngine } from "@/shared/lib/worker";
 
 export interface ImageBitmapData {
   bitmap: ImageBitmap;
@@ -11,11 +7,17 @@ export interface ImageBitmapData {
   width: number;
   height: number;
   filename: string;
+  size: number;
 }
 
 export interface ImageState {
   status: "idle" | "loading" | "processing" | "error" | "no_img";
-  info: { width: number; height: number; filename: string } | null;
+  info: {
+    width: number;
+    height: number;
+    filename: string;
+    size: number;
+  } | null;
   bitmap?: ImageBitmap;
   isModified: boolean;
 

@@ -1,5 +1,5 @@
 import createWasmModule, { type WasmModule } from "@/shared/lib/wasm/filters";
-import type { FilterType } from "@/shared/lib/worker/types";
+import type { FilterType } from "@/shared/lib/worker";
 
 export class WasmHost {
   private wasmModule: WasmModule | null = null;

@@ -136,6 +136,7 @@ export const CanvasArea = () => {
         {/* processed */}
         <canvas
           id="result"
+          key={imgInfo.filename}
           ref={processedRef}
           className={cn(
             "absolute inset-0 h-full w-full object-contain transition-opacity duration-200 ease-in-out pointer-events-none",

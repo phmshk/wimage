@@ -1,8 +1,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
+static int counts[256];
+
 static inline uint8_t find_median(uint8_t *arr, size_t size, size_t mid) {
-  int counts[256] = {0};
 
   for (size_t i = 0; i < size; i++) {
     counts[arr[i]]++;
