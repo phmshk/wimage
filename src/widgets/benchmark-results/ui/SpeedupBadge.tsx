@@ -28,7 +28,7 @@ export const SpeedupBadge = (props: SpeedupBadgeProps) => {
 
   if (ratio === "1.0") {
     return (
-      <span className="text-xs font-medium text-muted-foreground">
+      <span className="text-xs font-medium text-primary-foreground bg-primary/80 rounded-full px-2 py-0.5 ">
         About equal
       </span>
     );

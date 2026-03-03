@@ -27,6 +27,14 @@ export const useBenchmarkStore = create<BenchmarkState>()((set) => ({
 
   setError: (error) => set({ error, status: "error" }),
 
+  startBenchmark: () =>
+    set({
+      status: "running",
+      results: [],
+      progress: { current: 0, total: 1 },
+      error: null,
+    }),
+
   reset: () =>
     set({
       status: "idle",
@@ -55,6 +63,7 @@ export const useBenchmarkActions = () =>
       setProgress: state.setProgress,
       setResults: state.setResults,
       setError: state.setError,
+      startBenchmark: state.startBenchmark,
       reset: state.reset,
     }))
   );
