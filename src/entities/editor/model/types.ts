@@ -1,4 +1,6 @@
-export type ComputeEngine = "js" | "wasm";
+import type { ComputeEngine } from "@/shared/lib/worker";
+
+export type { ComputeEngine };
 
 export interface EditorSettingsState {
   engine: ComputeEngine;

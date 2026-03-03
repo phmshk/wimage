@@ -1,5 +1,5 @@
-import type { FilterType } from "@/shared/lib/worker/types";
 import createWasmModule, { type WasmModule } from "@/shared/lib/wasm/filters";
+import type { FilterType } from "@/shared/lib/worker";
 
 export class WasmHost {
   private wasmModule: WasmModule | null = null;
@@ -14,7 +14,7 @@ export class WasmHost {
   public async init(
     maxChunkWidth: number,
     maxChunkHeight: number,
-    maxPadding: number
+    maxPadding: number,
   ): Promise<void> {
     if (this.wasmModule) return;
 
@@ -32,16 +32,33 @@ export class WasmHost {
     this.kernelPtr = this.wasmModule._malloc(1024 * 4);
   }
 
+  public getPixelsView(width: number, height: number): Uint8ClampedArray {
+    if (!this.wasmModule) throw new Error("Not initialized");
+    return new Uint8ClampedArray(
+      this.wasmModule.HEAPU8.buffer,
+      this.pixelsPtr,
+      width * height * 4,
+    );
+  }
+
+  public getPixelsUint32View(width: number, height: number): Uint32Array {
+    if (!this.wasmModule) throw new Error("Not initialized");
+    return new Uint32Array(
+      this.wasmModule.HEAPU8.buffer,
+      this.pixelsPtr,
+      width * height,
+    );
+  }
+
   public applyFilter(
     filterName: FilterType,
-    imageData: Uint8ClampedArray,
-    width: number,
+    width: number, // Data is already in WASM memory
     height: number,
-    radiusOrPadding: number
+    radiusOrPadding: number,
   ): { data: Uint8ClampedArray; pureComputeTime: number } {
     if (!this.wasmModule) {
       throw new Error(
-        "WASM environment is not initialized. Call init() first."
+        "WASM environment is not initialized. Call init() first.",
       );
     }
 
@@ -50,15 +67,13 @@ export class WasmHost {
     const pixelsView = new Uint8ClampedArray(
       this.wasmModule.HEAPU8.buffer,
       this.pixelsPtr,
-      this.maxByteSize
+      currentByteSize,
     );
     const outputView = new Uint8ClampedArray(
       this.wasmModule.HEAPU8.buffer,
       this.outputPtr,
-      this.maxByteSize
+      currentByteSize,
     );
-
-    pixelsView.set(imageData);
 
     let resultView = pixelsView;
 
@@ -79,7 +94,7 @@ export class WasmHost {
           this.pixelsPtr,
           this.outputPtr,
           width,
-          height
+          height,
         );
         resultView = outputView;
         break;
@@ -88,7 +103,7 @@ export class WasmHost {
           this.pixelsPtr,
           this.outputPtr,
           width,
-          height
+          height,
         );
         resultView = outputView;
         break;
@@ -100,7 +115,7 @@ export class WasmHost {
           this.outputPtr,
           width,
           height,
-          radiusOrPadding
+          radiusOrPadding,
         );
         resultView = outputView;
         break;
@@ -111,7 +126,7 @@ export class WasmHost {
           this.outputPtr,
           width,
           height,
-          radiusOrPadding
+          radiusOrPadding,
         );
         resultView = outputView;
         break;
@@ -121,7 +136,7 @@ export class WasmHost {
           this.outputPtr,
           width,
           height,
-          radiusOrPadding
+          radiusOrPadding,
         );
         resultView = outputView;
         break;
@@ -132,20 +147,20 @@ export class WasmHost {
           this.tempPtr,
           width,
           height,
-          radiusOrPadding
+          radiusOrPadding,
         );
         resultView = outputView;
         break;
 
       default:
         throw new Error(
-          `WASM implementation for filter "${filterName}" is missing.`
+          `WASM implementation for filter "${filterName}" is missing.`,
         );
     }
     const t1 = performance.now();
     const pureComputeTime = t1 - t0;
 
-    return { data: resultView.subarray(0, currentByteSize), pureComputeTime };
+    return { data: resultView, pureComputeTime };
   }
 }
 

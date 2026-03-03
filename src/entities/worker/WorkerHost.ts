@@ -2,19 +2,26 @@ import type {
   WorkerResponse,
   FilterPayload,
   WorkerRequest,
+  BenchmarkConfig,
+  BenchmarkProgress,
+  BenchmarkResult,
+  ComputeEngine,
+  Metrics,
+  ProcessingProgress,
 } from "@/shared/lib/worker";
-import type { ChunkData } from "@/shared/lib/worker/types";
+
+interface PendingRequest {
+  resolve: (value: unknown) => void;
+  reject: (reason: Error) => void;
+  onProgress?: (data: unknown) => void;
+  cancelFlag?: Uint8Array;
+}
 
 export class WorkerHost {
   private worker: Worker | null = null;
-  private pendingRequests = new Map<
+  private pendingRequests: Map<string, PendingRequest> = new Map<
     string,
-    {
-      resolve: (res: WorkerResponse) => void;
-      reject: (reason: unknown) => void;
-      onProgress?: (chunk: ChunkData) => void;
-      cancelFlag?: Uint8Array;
-    }
+    PendingRequest
   >();
   private currentRequestId: string | null = null;
 
@@ -38,23 +45,13 @@ export class WorkerHost {
     return this.worker;
   }
 
-  public initOffscreen(canvas: OffscreenCanvas): void {
-    this.getWorker().postMessage({ type: "init_canvas", canvas }, [canvas]);
-  }
-
-  public setImage(bitmap: ImageBitmap, width: number, height: number): void {
-    const worker = this.getWorker();
-    worker.postMessage(
-      { type: "set_image", imageData: { bitmap, width, height } },
-      [bitmap]
-    );
-  }
-
-  public processImage(
-    payload: FilterPayload,
-    engine: "js" | "wasm",
-    onProgress?: (chunk: ChunkData) => void
-  ): Promise<WorkerResponse> {
+  private sendRequest<TResponse, TProgress = never>(
+    requestBuilder: (
+      id: string,
+      cancelBuffer?: SharedArrayBuffer
+    ) => WorkerRequest,
+    onProgress?: (progress: TProgress) => void
+  ): Promise<TResponse> {
     return new Promise((resolve, reject) => {
       const id = crypto.randomUUID();
 
@@ -75,28 +72,70 @@ export class WorkerHost {
       }
 
       this.pendingRequests.set(id, {
-        resolve,
+        resolve: resolve as (value: unknown) => void,
         reject,
-        onProgress,
+        onProgress: onProgress as ((data: unknown) => void) | undefined,
         cancelFlag,
       });
 
-      const request: WorkerRequest = {
-        id,
-        type: "apply_filter",
-        payload,
-        cancelBuffer,
-        engine,
-      };
+      const request = requestBuilder(id, cancelBuffer);
 
       try {
         this.getWorker().postMessage(request);
       } catch (e) {
         this.pendingRequests.delete(id);
-        reject(e);
+        reject(e instanceof Error ? e : new Error("Failed to post message"));
         this.currentRequestId = null;
       }
     });
+  }
+
+  public initOffscreen(canvas: OffscreenCanvas): void {
+    this.getWorker().postMessage({ type: "init_canvas", canvas }, [canvas]);
+  }
+
+  public setImage(bitmap: ImageBitmap, width: number, height: number): void {
+    const worker = this.getWorker();
+    worker.postMessage(
+      { type: "set_image", imageData: { bitmap, width, height } },
+      [bitmap]
+    );
+  }
+
+  public processImage(
+    payload: FilterPayload,
+    engine: ComputeEngine,
+    onProgress?: (progress: ProcessingProgress) => void
+  ): Promise<Metrics> {
+    return this.sendRequest<Metrics, ProcessingProgress>(
+      (id, cancelBuffer) => ({
+        type: "apply_filter",
+        id,
+        payload,
+        engine,
+        cancelBuffer,
+      }),
+      onProgress
+    );
+  }
+
+  public runBenchmark(
+    config: BenchmarkConfig,
+    width: number,
+    height: number,
+    onProgress?: (progress: BenchmarkProgress) => void
+  ): Promise<BenchmarkResult[]> {
+    return this.sendRequest<BenchmarkResult[], BenchmarkProgress>(
+      (id, cancelBuffer) => ({
+        type: "run_benchmark",
+        id,
+        config,
+        width,
+        height,
+        cancelBuffer,
+      }),
+      onProgress
+    );
   }
 
   public abortCurrTask() {
@@ -123,36 +162,40 @@ export class WorkerHost {
     }
   }
 
-  private handleMessage(event: MessageEvent<WorkerResponse>) {
-    const { id, success, type, error, chunk } = event.data;
+  private handleMessage(event: MessageEvent<WorkerResponse>): void {
+    const response = event.data;
 
-    if (error) {
-      console.error(error);
-    }
+    if (!("id" in response) || !response.id) return;
 
-    if (!id) return;
-
-    const request = this.pendingRequests.get(id);
+    const request = this.pendingRequests.get(response.id);
     if (!request) return;
 
-    if (!success) {
-      request.reject(new Error(error || "Unknown worker error"));
-      this.pendingRequests.delete(id);
-      this.currentRequestId = null;
-      return;
-    }
+    switch (response.type) {
+      case "error":
+        request.reject(new Error(response.error));
+        this.pendingRequests.delete(response.id);
+        this.currentRequestId = null;
+        break;
 
-    if (type === "processing") {
-      if (request.onProgress && chunk) {
-        request.onProgress(chunk);
-      }
-      return;
-    }
+      case "processing":
+        if (request.onProgress) request.onProgress(response.progress);
+        break;
 
-    if (type === "done") {
-      request.resolve(event.data);
-      this.pendingRequests.delete(id);
-      this.currentRequestId = null;
+      case "benchmark_running":
+        if (request.onProgress) request.onProgress(response.progress);
+        break;
+
+      case "done":
+        request.resolve(response.metrics);
+        this.pendingRequests.delete(response.id);
+        this.currentRequestId = null;
+        break;
+
+      case "benchmark_done":
+        request.resolve(response.results);
+        this.pendingRequests.delete(response.id);
+        this.currentRequestId = null;
+        break;
     }
   }
 

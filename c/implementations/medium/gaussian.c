@@ -42,7 +42,6 @@ void apply_gaussian_blur(uint8_t *pixels, uint32_t *kernel, uint8_t *tmp_pixels,
       uint32_t r = 0, g = 0, b = 0, a = 0;
 
       for (size_t k = 0; k < kernel_size; k++) {
-        // Inline clamp по X
         int px = (int)x + (int)k - (int)radius;
         if (px < 0)
           px = 0;
@@ -73,7 +72,6 @@ void apply_gaussian_blur(uint8_t *pixels, uint32_t *kernel, uint8_t *tmp_pixels,
       uint32_t r = 0, g = 0, b = 0, a = 0;
 
       for (size_t k = 0; k < kernel_size; k++) {
-        // Inline clamp по Y
         int py = (int)y + (int)k - (int)radius;
         if (py < 0)
           py = 0;

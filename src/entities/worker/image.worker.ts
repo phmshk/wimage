@@ -1,213 +1,213 @@
 import type {
-  FilterPayload,
   WorkerRequest,
-  WorkerResponse,
+  BenchmarkResult,
+  EngineMetrics,
 } from "@/shared/lib/worker";
-
+import { FILTERS_META, getDefaultFilterOptions } from "@/shared/config";
 import {
   CHUNK_HEIGHT,
-  CHUNK_PADDING,
   CHUNK_WIDTH,
-  FRAME_BUDGET_MS,
-  jsFilters,
   MAX_FILTER_RADIUS,
 } from "./model/constants";
+import { processImageChunks } from "./model/helpers";
 import { wasmHost } from "./WasmHost";
+import { getMedian } from "@/shared/lib/utils";
 
 let offscreenCtx: OffscreenCanvasRenderingContext2D | null = null;
-
-let stagingCanvas: OffscreenCanvas | null = null;
 let stagingCtx: OffscreenCanvasRenderingContext2D | null = null;
+let stagingCanvas: OffscreenCanvas | null = null;
+
+let currentWidth = 0;
+let currentHeight = 0;
+let isCancelled = false;
+
 let pendingImageData: {
   bitmap: ImageBitmap;
   width: number;
   height: number;
 } | null = null;
-let isCancelled = false;
 
 self.onmessage = async (e: MessageEvent<WorkerRequest>) => {
-  const { type, id, payload, canvas, imageData, cancelBuffer, engine } = e.data;
+  const request = e.data;
 
   try {
-    if (type === "cancel_filter") {
-      isCancelled = true;
-      return;
-    }
-
-    if (type === "init_canvas" && canvas) {
-      offscreenCtx = canvas.getContext("2d", { willReadFrequently: true });
-      await wasmHost.init(canvas.width, canvas.height, MAX_FILTER_RADIUS);
-      if (pendingImageData) {
-        applyImageToCanvas(pendingImageData);
-        pendingImageData = null;
+    switch (request.type) {
+      case "cancel_filter": {
+        isCancelled = true;
+        break;
       }
-      return;
-    }
+      case "init_canvas": {
+        offscreenCtx = request.canvas.getContext("2d", {
+          willReadFrequently: true,
+        });
+        await wasmHost.init(CHUNK_WIDTH, CHUNK_HEIGHT, MAX_FILTER_RADIUS);
 
-    if (type === "set_image" && imageData) {
-      if (!offscreenCtx) {
-        pendingImageData = imageData;
-        return;
-      }
-      applyImageToCanvas(imageData);
-
-      return;
-    }
-
-    if (type === "apply_filter" && id && payload) {
-      isCancelled = false;
-      await runFilterBenchmark(id, payload, engine, cancelBuffer);
-      return;
-    }
-  } catch (error) {
-    const errResponse: WorkerResponse = {
-      id: id || "unknown",
-      type: "error",
-      success: false,
-      error: (error as Error).message || "Unknown worker error",
-    };
-    self.postMessage(errResponse);
-  }
-};
-
-async function runFilterBenchmark(
-  id: string,
-  payload: FilterPayload,
-  engine: "js" | "wasm",
-  cancelBuffer?: SharedArrayBuffer
-) {
-  if (!offscreenCtx) throw new Error("Canvas not ready");
-
-  const { width, height, filterName, options } = payload;
-
-  let padding = options?.radius ?? CHUNK_PADDING;
-  if (engine === "wasm" && padding > MAX_FILTER_RADIUS) {
-    console.warn(
-      `[Worker] Radius ${padding} exceeds MAX_FILTER_RADIUS. Clamping to ${MAX_FILTER_RADIUS}.`
-    );
-    padding = MAX_FILTER_RADIUS;
-  }
-
-  if (
-    !stagingCanvas ||
-    stagingCanvas.width !== width ||
-    stagingCanvas.height !== height
-  ) {
-    stagingCanvas = new OffscreenCanvas(width, height);
-    stagingCtx = stagingCanvas.getContext("2d", { willReadFrequently: true });
-  }
-  stagingCtx!.drawImage(offscreenCtx.canvas, 0, 0);
-
-  let processedPixels = 0;
-  const totalPixels = width * height;
-
-  const startTime = performance.now();
-  let lastYieldTime = performance.now();
-
-  const cancelFlag = cancelBuffer ? new Uint8Array(cancelBuffer) : null;
-  let totalCoreTime = 0;
-
-  for (let y = 0; y < height; y += CHUNK_HEIGHT) {
-    for (let x = 0; x < width; x += CHUNK_WIDTH) {
-      if ((cancelFlag && cancelFlag[0] === 1) || isCancelled) {
-        return;
-      }
-
-      const currentChunkW = Math.min(CHUNK_WIDTH, width - x); //
-      const currentChunkH = Math.min(CHUNK_HEIGHT, height - y); //
-
-      // native padding calculation
-      const paddedWidth = currentChunkW + padding * 2;
-      const paddedHeight = currentChunkH + padding * 2;
-
-      const paddedImageData = stagingCtx!.getImageData(
-        x - padding,
-        y - padding,
-        paddedWidth,
-        paddedHeight
-      );
-
-      if (engine === "js") {
-        const filterFn = jsFilters[filterName];
-        if (!filterFn) {
-          throw new Error(
-            `Filter "${filterName}" is not implemented in JS engine.`
-          );
+        if (pendingImageData) {
+          applyImageToCanvas(pendingImageData);
+          pendingImageData = null;
         }
-        const t0 = performance.now();
-
-        const resultPixels = filterFn(
-          paddedImageData.data,
-          paddedWidth,
-          paddedHeight,
-          options
-        );
-        totalCoreTime += performance.now() - t0;
-
-        if (resultPixels && resultPixels !== paddedImageData.data) {
-          paddedImageData.data.set(resultPixels);
-        }
-      } else if (engine === "wasm") {
-        const resultPixels = wasmHost.applyFilter(
-          filterName,
-          paddedImageData.data,
-          paddedWidth,
-          paddedHeight,
-          padding
-        );
-        totalCoreTime += resultPixels.pureComputeTime;
-
-        paddedImageData.data.set(resultPixels.data);
+        break;
       }
 
-      // native crop
-      offscreenCtx.putImageData(
-        paddedImageData,
-        x - padding,
-        y - padding,
-        padding,
-        padding,
-        currentChunkW,
-        currentChunkH
-      );
+      case "set_image": {
+        if (!offscreenCtx) {
+          if (pendingImageData) {
+            pendingImageData.bitmap.close();
+          }
+          pendingImageData = request.imageData;
+          break;
+        }
 
-      processedPixels += currentChunkW * currentChunkH;
+        applyImageToCanvas(request.imageData);
+        break;
+      }
+      case "apply_filter": {
+        if (pendingImageData || !offscreenCtx || !stagingCtx) {
+          throw new Error("The image or canvas is not ready yet. Please wait.");
+        }
+        isCancelled = false;
 
-      const now = performance.now();
-      if (now - lastYieldTime > FRAME_BUDGET_MS) {
-        self.postMessage({
-          id,
-          type: "processing",
-          success: true,
-          chunk: {
+        const metrics = await processImageChunks({
+          sourceCtx: stagingCtx,
+          width: currentWidth,
+          height: currentHeight,
+          filterName: request.payload.filterName,
+          engine: request.engine,
+          options: request.payload.options,
+          cancelFlag: request.cancelBuffer
+            ? new Uint8Array(request.cancelBuffer)
+            : null,
+          checkIsCancelled: () => isCancelled,
+
+          onChunkDone: (
+            paddedImageData,
             x,
             y,
-            width: currentChunkW,
-            height: currentChunkH,
-            progress: { processed: processedPixels, total: totalPixels },
+            currentChunkW,
+            currentChunkH,
+            padding
+          ) => {
+            offscreenCtx!.putImageData(
+              paddedImageData,
+              x - padding,
+              y - padding,
+              padding,
+              padding,
+              currentChunkW,
+              currentChunkH
+            );
+          },
+
+          onProgressReport: (processed, total) => {
+            self.postMessage({
+              id: request.id,
+              type: "processing",
+              success: true,
+              progress: { processed, total },
+            });
           },
         });
 
-        if (typeof SharedArrayBuffer === "undefined") {
-          await new Promise((resolve) => setTimeout(resolve, 0));
+        stagingCtx.drawImage(offscreenCtx.canvas, 0, 0);
+
+        self.postMessage({
+          type: "done",
+          id: request.id,
+          success: true,
+          metrics,
+        });
+        break;
+      }
+      case "run_benchmark": {
+        if (!stagingCtx) throw new Error("Canvas not ready");
+        isCancelled = false;
+
+        const resultsMap = new Map<string, BenchmarkResult>();
+
+        const totalTasks =
+          request.config.engines.length *
+          request.config.filters.length *
+          request.config.iterations;
+        let currentTaskCount = 0;
+
+        for (const filter of request.config.filters) {
+          resultsMap.set(filter, {
+            filterId: filter,
+            filterName: FILTERS_META[filter].label,
+            iterations: request.config.iterations,
+          });
         }
-        lastYieldTime = performance.now();
+
+        for (const engine of request.config.engines) {
+          for (const filter of request.config.filters) {
+            const computeTimes: number[] = [];
+            const pipelineTimes: number[] = [];
+
+            for (let i = 1; i <= request.config.iterations; i++) {
+              const metrics = await processImageChunks({
+                sourceCtx: stagingCtx,
+                width: currentWidth,
+                height: currentHeight,
+                filterName: filter,
+                engine,
+                options: getDefaultFilterOptions(filter),
+                cancelFlag: request.cancelBuffer
+                  ? new Uint8Array(request.cancelBuffer)
+                  : null,
+                checkIsCancelled: () => isCancelled,
+              });
+
+              computeTimes.push(metrics.computeTime);
+              pipelineTimes.push(metrics.totalTime);
+              currentTaskCount++;
+
+              self.postMessage({
+                id: request.id,
+                type: "benchmark_running",
+                success: true,
+                progress: { current: currentTaskCount, total: totalTasks },
+              });
+            }
+
+            const medianCompute = getMedian(computeTimes);
+            const medianTotal = getMedian(pipelineTimes);
+
+            const filterResult = resultsMap.get(filter)!;
+            const engineMetrics: EngineMetrics = {
+              avgComputeTime: Number(medianCompute.toFixed(1)),
+              avgTotalTime: Number(medianTotal.toFixed(1)),
+            };
+
+            if (engine === "js") {
+              filterResult.js = engineMetrics;
+            } else if (engine === "wasm") {
+              filterResult.wasm = engineMetrics;
+            }
+          }
+        }
+
+        const results = Array.from(resultsMap.values());
+
+        self.postMessage({
+          type: "benchmark_done",
+          id: request.id,
+          success: true,
+          results,
+        });
+        break;
       }
     }
+  } catch (error) {
+    if ((error as Error).message === "Cancelled") return;
+
+    self.postMessage({
+      id: "id" in request ? request.id : "system",
+      type: "error",
+      success: false,
+      error: (error as Error).message || "Unknown worker error",
+    });
   }
-
-  const endTime = performance.now();
-
-  self.postMessage({
-    id,
-    type: "done",
-    success: true,
-    metrics: {
-      computeTime: totalCoreTime,
-      totalTime: endTime - startTime,
-    },
-  });
-}
+};
 
 function applyImageToCanvas(imageData: {
   bitmap: ImageBitmap;
@@ -216,10 +216,26 @@ function applyImageToCanvas(imageData: {
 }) {
   const { bitmap, width, height } = imageData;
 
+  currentWidth = width;
+  currentHeight = height;
+
+  if (
+    !stagingCanvas ||
+    stagingCanvas.width !== width ||
+    stagingCanvas.height !== height
+  ) {
+    stagingCanvas = new OffscreenCanvas(width, height);
+    stagingCtx = stagingCanvas.getContext("2d", {
+      willReadFrequently: true,
+    });
+  }
+
+  stagingCtx!.drawImage(bitmap, 0, 0);
+
   offscreenCtx!.canvas.width = width;
   offscreenCtx!.canvas.height = height;
 
-  offscreenCtx!.drawImage(bitmap, 0, 0);
+  offscreenCtx!.drawImage(stagingCanvas, 0, 0);
 
   bitmap.close();
 }

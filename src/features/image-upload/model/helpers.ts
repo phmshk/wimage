@@ -11,9 +11,8 @@ export const validateImage = (file: File): boolean => {
     return false;
   }
 
-  if (file.size > 100 * 1024 * 1024) {
-    // 100MB
-    notify.error("Max 100MB");
+  if (file.size > 20 * 1024 * 1024) {
+    notify.error("File too large", "Maximum upload size is 20MB.");
     return false;
   }
 
@@ -22,7 +21,7 @@ export const validateImage = (file: File): boolean => {
 
 export const normalizeImageFile = async (
   file: File
-): Promise<{ blob: Blob; filename: string }> => {
+): Promise<{ blob: Blob; filename: string; size: number }> => {
   const isHeic =
     file.type === "image/heic" ||
     file.type === "image/heif" ||
@@ -30,27 +29,23 @@ export const normalizeImageFile = async (
     file.name.toLowerCase().endsWith(".heif");
 
   if (!isHeic) {
-    // Если это обычный PNG/JPG/WEBP, просто отдаем как есть
-    return { blob: file, filename: file.name };
+    return { blob: file, filename: file.name, size: file.size };
   }
 
   try {
-    // Конвертируем HEIC в JPEG прямо в браузере
     const convertedBlob = await heic2any({
       blob: file,
       toType: "image/jpeg",
-      quality: 0.9, // Отличное качество при адекватном весе
+      quality: 0.9,
     });
 
-    // heic2any может вернуть массив (если в HEIC зашита анимация или серия фото)
     const finalBlob = Array.isArray(convertedBlob)
       ? convertedBlob[0]
       : convertedBlob;
 
-    // Меняем расширение в имени файла
     const newFilename = file.name.replace(/\.heic|\.heif/i, ".jpg");
 
-    return { blob: finalBlob, filename: newFilename };
+    return { blob: finalBlob, filename: newFilename, size: file.size };
   } catch (error) {
     console.error("HEIC conversion failed:", error);
     throw new Error(

@@ -6,4 +6,6 @@ export {
   useImageStatus,
   useMetrics,
   useIsModified,
-} from "./model/store.ts";
+} from "./model/store";
+
+export {} from "./model/types";

@@ -1,14 +1,15 @@
 import type { FilterOptions } from "../image-processing";
 
-// eslint-disable-next-line
-const WorkerActions = [
-  "init",
-  "apply_filter",
-  "set_image",
-  "init_canvas",
-  "cancel_filter",
-] as const;
-export type WorkerActionType = (typeof WorkerActions)[number];
+export type Metrics = {
+  computeTime: number;
+  totalTime: number;
+};
+
+export interface EngineMetrics {
+  avgComputeTime: number;
+  avgTotalTime: number;
+}
+export type ComputeEngine = "js" | "wasm";
 
 // eslint-disable-next-line
 const FilterNames = [
@@ -31,37 +32,74 @@ export interface FilterPayload {
   height: number;
 }
 
-// from main thread to worker
-export interface WorkerRequest {
-  id?: string;
-  type: WorkerActionType;
-  canvas?: OffscreenCanvas;
-  payload?: FilterPayload;
-  imageData?: {
-    bitmap: ImageBitmap;
-    width: number;
-    height: number;
-  };
-  cancelBuffer?: SharedArrayBuffer | undefined;
-  engine: "js" | "wasm";
+export interface ProcessingProgress {
+  processed: number;
+  total: number;
 }
 
-export interface ChunkData {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  progress: { processed: number; total: number };
-}
+// from main thread to worker
+export type WorkerRequest =
+  | { type: "init_canvas"; canvas: OffscreenCanvas }
+  | {
+      type: "set_image";
+      imageData: { bitmap: ImageBitmap; width: number; height: number };
+    }
+  | {
+      type: "apply_filter";
+      id: string;
+      payload: FilterPayload;
+      engine: ComputeEngine;
+      cancelBuffer?: SharedArrayBuffer;
+    }
+  | { type: "cancel_filter"; id: string }
+  | {
+      type: "run_benchmark";
+      id: string;
+      config: BenchmarkConfig;
+      width: number;
+      height: number;
+      cancelBuffer?: SharedArrayBuffer;
+    };
+
+export type WorkerActionType = WorkerRequest["type"];
 
 // from worker to main thread
-export interface WorkerResponse {
-  id: string;
-  success: boolean;
-  error?: string;
-  chunk?: ChunkData;
-  type?: "processing" | "done" | "image_ready" | "error"; // status of dividing image into chunks and apllying filter to each chunk
-  metrics?: Metrics;
+export type WorkerResponse =
+  | {
+      type: "processing";
+      id: string;
+      success: true;
+      progress: ProcessingProgress;
+    }
+  | { type: "done"; id: string; success: true; metrics: Metrics }
+  | {
+      type: "benchmark_running";
+      id: string;
+      success: true;
+      progress: BenchmarkProgress;
+    }
+  | {
+      type: "benchmark_done";
+      id: string;
+      success: true;
+      results: BenchmarkResult[];
+    }
+  | { type: "error"; id: string; success: false; error: string };
+export type WorkerResponseType = WorkerResponse["type"];
+
+export type BenchmarkMetrics = { computeTime: number };
+export type BenchmarkProgress = { current: number; total: number };
+
+export interface BenchmarkConfig {
+  iterations: number;
+  filters: FilterType[];
+  engines: ComputeEngine[];
 }
 
-export type Metrics = { computeTime: number; totalTime: number };
+export interface BenchmarkResult {
+  filterId: string;
+  filterName: string;
+  js?: EngineMetrics;
+  wasm?: EngineMetrics;
+  iterations: number;
+}

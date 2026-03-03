@@ -53,7 +53,6 @@ export const applyGaussianBlur: FilterProcessFn = (
         a = 0;
 
       for (let k = 0; k < kernelSize; k++) {
-        // Inline clamp по X
         let px = x + k - radius;
         if (px < 0) px = 0;
         else if (px >= width) px = width - 1;
@@ -85,7 +84,6 @@ export const applyGaussianBlur: FilterProcessFn = (
         a = 0;
 
       for (let k = 0; k < kernelSize; k++) {
-        // Inline clamp по Y
         let py = y + k - radius;
         if (py < 0) py = 0;
         else if (py >= height) py = height - 1;
