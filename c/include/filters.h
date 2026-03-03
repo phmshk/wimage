@@ -23,8 +23,8 @@ EXPORT_WASM void apply_sobel(uint8_t *pixels, uint8_t *output, size_t width,
                              size_t height);
 
 // heavy
-EXPORT_WASM void apply_bilateral(uint8_t *pixels, uint8_t *output, size_t width,
-                                 size_t height, uint8_t radius);
+EXPORT_WASM void apply_bilateral(uint8_t *pixels, uint8_t *output, int width,
+                                 int height, int radius);
 EXPORT_WASM void apply_kuwahara(uint8_t *pixels, uint8_t *output, size_t width,
                                 size_t height, uint8_t radius);
 EXPORT_WASM void apply_median(uint8_t *pixels, uint8_t *output,
