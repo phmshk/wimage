@@ -46,12 +46,17 @@ class BufferPool {
       this.uint32View = new Uint32Array(this.buffer.buffer);
       this.size = neededSize;
     }
-    return this.buffer;
+    return this.buffer.subarray(0, neededSize);
   }
 
   getUint32View(width: number, height: number): Uint32Array {
-    this.getBuffer(width, height);
-    return this.uint32View!;
+    const neededSize = width * height * 4;
+    if (!this.buffer || this.size < neededSize) {
+      this.buffer = new Uint8ClampedArray(neededSize);
+      this.uint32View = new Uint32Array(this.buffer.buffer);
+      this.size = neededSize;
+    }
+    return this.uint32View!.subarray(0, neededSize / 4);
   }
 }
 

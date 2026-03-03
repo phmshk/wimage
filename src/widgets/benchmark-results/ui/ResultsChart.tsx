@@ -191,12 +191,12 @@ export const ResultsChart = () => {
             <TableBody>
               {results.map((res) => {
                 const js = res.js || {
-                  avgComputeTime: res.jsTimeMs ?? 0,
-                  avgTotalTime: res.jsTimeMs ?? 0,
+                  avgComputeTime: 0,
+                  avgTotalTime: 0,
                 };
                 const wasm = res.wasm || {
-                  avgComputeTime: res.wasmTimeMs ?? 0,
-                  avgTotalTime: res.wasmTimeMs ?? 0,
+                  avgComputeTime: 0,
+                  avgTotalTime: 0,
                 };
 
                 return (
