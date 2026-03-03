@@ -28,24 +28,22 @@ export const SpeedupBadge = (props: SpeedupBadgeProps) => {
 
   if (ratio === "1.0") {
     return (
-      <span className="text-xs font-medium text-muted-foreground">
+      <span className="text-xs font-medium text-primary-foreground bg-primary/80 rounded-full px-2 py-0.5 ">
         About equal
       </span>
     );
   }
 
   return (
-    <div className="flex flex-col items-end gap-1">
-      <span
-        className={cn(
-          "inline-flex items-center rounded-full px-2 py-0.5 text-s font-bold uppercase tracking-wider",
-          isWasmFaster
-            ? "bg-chart-2/15 text-chart-2"
-            : "bg-chart-1/15 text-chart-1"
-        )}
-      >
-        {isWasmFaster ? "WASM" : "JS"} {ratio}x faster
-      </span>
-    </div>
+    <span
+      className={cn(
+        "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
+        isWasmFaster
+          ? "bg-chart-2/15 text-chart-2"
+          : "bg-chart-1/15 text-chart-1"
+      )}
+    >
+      {isWasmFaster ? "WASM" : "JS"} {ratio}x faster
+    </span>
   );
 };

@@ -4,7 +4,7 @@ import { workerHost } from "@/entities/worker/WorkerHost";
 import { notify } from "@/shared/lib/notifications";
 
 export const useRunBenchmark = () => {
-  const { setStatus, setProgress, setError, setResults } =
+  const { startBenchmark, setStatus, setProgress, setError, setResults } =
     useBenchmarkActions();
   const config = useBenchmarkConfig();
 
@@ -28,9 +28,7 @@ export const useRunBenchmark = () => {
       return;
     }
 
-    setStatus("running");
-    setProgress({ current: 0, total: 1 });
-    setError(null);
+    startBenchmark();
 
     try {
       const results = await workerHost.runBenchmark(

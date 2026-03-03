@@ -18,5 +18,6 @@ export interface BenchmarkState {
   setProgress: (progress: BenchmarkProgress) => void;
   setResults: (results: BenchmarkResult[]) => void;
   setError: (error: string | null) => void;
+  startBenchmark: () => void;
   reset: () => void;
 }
