@@ -1,4 +1,8 @@
-import type { WorkerRequest, BenchmarkResult } from "@/shared/lib/worker";
+import type {
+  WorkerRequest,
+  BenchmarkResult,
+  EngineMetrics,
+} from "@/shared/lib/worker";
 import { FILTERS_META, getDefaultFilterOptions } from "@/shared/config";
 import {
   CHUNK_HEIGHT,
@@ -7,6 +11,7 @@ import {
 } from "./model/constants";
 import { processImageChunks } from "./model/helpers";
 import { wasmHost } from "./WasmHost";
+import { getMedian } from "@/shared/lib/utils";
 
 let offscreenCtx: OffscreenCanvasRenderingContext2D | null = null;
 let stagingCtx: OffscreenCanvasRenderingContext2D | null = null;
@@ -58,9 +63,7 @@ self.onmessage = async (e: MessageEvent<WorkerRequest>) => {
       }
       case "apply_filter": {
         if (pendingImageData || !offscreenCtx || !stagingCtx) {
-          throw new Error(
-            "The image or canvas is not ready yet. Please wait."
-          );
+          throw new Error("The image or canvas is not ready yet. Please wait.");
         }
         isCancelled = false;
 
@@ -137,7 +140,8 @@ self.onmessage = async (e: MessageEvent<WorkerRequest>) => {
 
         for (const engine of request.config.engines) {
           for (const filter of request.config.filters) {
-            let totalComputeTime = 0;
+            const computeTimes: number[] = [];
+            const pipelineTimes: number[] = [];
 
             for (let i = 1; i <= request.config.iterations; i++) {
               const metrics = await processImageChunks({
@@ -153,7 +157,8 @@ self.onmessage = async (e: MessageEvent<WorkerRequest>) => {
                 checkIsCancelled: () => isCancelled,
               });
 
-              totalComputeTime += metrics.computeTime;
+              computeTimes.push(metrics.computeTime);
+              pipelineTimes.push(metrics.totalTime);
               currentTaskCount++;
 
               self.postMessage({
@@ -164,15 +169,19 @@ self.onmessage = async (e: MessageEvent<WorkerRequest>) => {
               });
             }
 
-            const avgTimeMs = Number(
-              (totalComputeTime / request.config.iterations).toFixed(1)
-            );
+            const medianCompute = getMedian(computeTimes);
+            const medianTotal = getMedian(pipelineTimes);
 
             const filterResult = resultsMap.get(filter)!;
+            const engineMetrics: EngineMetrics = {
+              avgComputeTime: Number(medianCompute.toFixed(1)),
+              avgTotalTime: Number(medianTotal.toFixed(1)),
+            };
+
             if (engine === "js") {
-              filterResult.jsTimeMs = avgTimeMs;
+              filterResult.js = engineMetrics;
             } else if (engine === "wasm") {
-              filterResult.wasmTimeMs = avgTimeMs;
+              filterResult.wasm = engineMetrics;
             }
           }
         }
@@ -187,56 +196,6 @@ self.onmessage = async (e: MessageEvent<WorkerRequest>) => {
         });
         break;
       }
-      // case "run_benchmark": {
-      //   if (!stagingCtx) throw new Error("Canvas not ready");
-      //   isCancelled = false;
-      //
-      //   const results: BenchmarkResult[] = [];
-      //   const totalTasks =
-      //     request.config.engines.length *
-      //     request.config.filters.length *
-      //     request.config.iterations;
-      //   let currentTaskCount = 0;
-      //
-      //   for (const engine of request.config.engines) {
-      //     for (const filter of request.config.filters) {
-      //       // benchmarking
-      //       for (let i = 1; i <= request.config.iterations; i++) {
-      //         const metrics = await processImageChunks({
-      //           sourceCtx: stagingCtx,
-      //           width: currentWidth,
-      //           height: currentHeight,
-      //           filterName: filter,
-      //           engine,
-      //           cancelFlag: request.cancelBuffer
-      //             ? new Uint8Array(request.cancelBuffer)
-      //             : null,
-      //           checkIsCancelled: () => isCancelled,
-      //         });
-      //
-      //         results.push({
-      //           filterName: filter,
-      //         });
-      //
-      //         currentTaskCount++;
-      //         self.postMessage({
-      //           id: request.id,
-      //           type: "benchmark_progress",
-      //           success: true,
-      //           progress: { current: currentTaskCount, total: totalTasks },
-      //         });
-      //       }
-      //     }
-      //   }
-      //
-      //   self.postMessage({
-      //     type: "benchmark_done",
-      //     id: request.id,
-      //     success: true,
-      //     results,
-      //   });
-      //   break;
-      // }
     }
   } catch (error) {
     if ((error as Error).message === "Cancelled") return;

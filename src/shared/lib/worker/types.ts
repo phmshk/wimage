@@ -1,6 +1,14 @@
 import type { FilterOptions } from "../image-processing";
 
-export type Metrics = { computeTime: number; totalTime: number };
+export type Metrics = {
+  computeTime: number;
+  totalTime: number;
+};
+
+export interface EngineMetrics {
+  avgComputeTime: number;
+  avgTotalTime: number;
+}
 export type ComputeEngine = "js" | "wasm";
 
 // eslint-disable-next-line
@@ -91,7 +99,7 @@ export interface BenchmarkConfig {
 export interface BenchmarkResult {
   filterId: string;
   filterName: string;
-  jsTimeMs?: number;
-  wasmTimeMs?: number;
+  js?: EngineMetrics;
+  wasm?: EngineMetrics;
   iterations: number;
 }
