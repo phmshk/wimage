@@ -10,28 +10,19 @@ import {
   CardTitle,
   CardContent,
 } from "@/shared/ui/components/ui/card";
-import {
-  AlertCircle,
-  Grid2X2,
-  HardDrive,
-  ImageIcon,
-  Ruler,
-} from "lucide-react";
+import { AlertCircle } from "lucide-react";
 import {
   Alert,
   AlertTitle,
   AlertDescription,
 } from "@/shared/ui/components/ui/alert";
-import { useImageInfo } from "@/entities/image";
-import { formatBytes } from "@/shared/lib/utils";
-import { Separator } from "@/shared/ui/components/ui/separator";
+import { ImgInfo } from "@/widgets/img-info";
 
 export const BenchmarkPage = () => {
   const { runBenchmark, cancelBenchmark, hasImage } = useRunBenchmark();
   const progress = useBenchmarkProgress();
   const benchmarkStatus = useBenchmarkStatus();
   const isRunning = benchmarkStatus === "running";
-  const imageInfo = useImageInfo();
 
   const progressPercent =
     progress.total > 0
@@ -45,9 +36,10 @@ export const BenchmarkPage = () => {
           Performance Benchmark
         </h1>
         <p className="max-w-3xl text-muted-foreground">
-          Compare the performance of image-processing algorithms between pure
-          JavaScript and WebAssembly (C). Tests run on the currently loaded
-          image.
+          A comparison of image-processing performance between native JavaScript
+          and WebAssembly (compiled from C). Tests are executed on the currently
+          loaded image, with results representing the median execution time of
+          all runs for each filter.
         </p>
       </div>
 
@@ -61,48 +53,6 @@ export const BenchmarkPage = () => {
           </AlertDescription>
         </Alert>
       )}
-
-      {hasImage && imageInfo && (
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 rounded-lg border border-dashed bg-muted/30 p-4 text-sm text-muted-foreground">
-          <div className="flex items-center gap-2 font-medium text-foreground">
-            <ImageIcon className="h-4 w-4 text-primary/70" aria-hidden="true" />
-            <span className="truncate max-w-52">
-              {imageInfo.filename || "Target Image"}
-            </span>
-          </div>
-
-          <Separator orientation="vertical" />
-
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="flex items-center gap-1.5">
-              <Ruler className="h-4 w-4" aria-hidden="true" />
-              <span>
-                {imageInfo.width} &times; {imageInfo.height} px
-              </span>
-            </div>
-
-            <div className="flex items-center gap-1.5" title="Total Megapixels">
-              <Grid2X2 className="h-4 w-4" aria-hidden="true" />
-              <span>
-                {((imageInfo.width * imageInfo.height) / 1_000_000).toFixed(2)}{" "}
-                MP
-              </span>
-            </div>
-
-            <div
-              className="flex items-center gap-1.5"
-              title={`${imageInfo.size.toLocaleString()} bytes`}
-            >
-              <HardDrive
-                className="h-4 w-4 text-muted-foreground"
-                aria-hidden="true"
-              />
-              <span>{formatBytes(imageInfo.size)}</span>
-            </div>
-          </div>
-        </div>
-      )}
-
       <div className="grid grid-cols-1 items-start gap-8 md:grid-cols-12 min-w-0">
         <div className="flex flex-col gap-6 md:col-span-4 md:sticky md:top-8">
           <BenchmarkConfig />
@@ -144,6 +94,7 @@ export const BenchmarkPage = () => {
               )}
             </CardContent>
           </Card>
+          {hasImage && <ImgInfo />}
         </div>
 
         <div className="md:col-span-8">
