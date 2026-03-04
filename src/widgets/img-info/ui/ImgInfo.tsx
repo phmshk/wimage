@@ -13,7 +13,9 @@ export const ImgInfo = () => {
       <div className="flex items-center gap-2 font-medium text-foreground">
         <ImageIcon className="h-4 w-4 text-primary/70" aria-hidden="true" />
         <span className="truncate max-w-52">
-          {imageInfo.filename || "Target Image"}
+          {imageInfo.filename.length > 10
+            ? imageInfo.filename.substring(0, 10) + "..."
+            : imageInfo.filename || "Target Image"}
         </span>
       </div>
 

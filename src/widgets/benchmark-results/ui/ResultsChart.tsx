@@ -96,7 +96,7 @@ export const ResultsChart = () => {
         <CardHeader>
           <CardTitle>Performance Breakdown</CardTitle>
           <CardDescription>
-            Compute (solid) vs Pipeline Overhead (translucent) in ms
+            Compute time with total time in ms. Lower is better
           </CardDescription>
         </CardHeader>
         <CardContent>
