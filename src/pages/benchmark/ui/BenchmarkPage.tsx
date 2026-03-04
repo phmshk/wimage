@@ -1,6 +1,10 @@
 import { BenchmarkConfig } from "@/widgets/benchmark-config";
-import { ResultsChart } from "@/widgets/benchmark-results";
-import { useBenchmarkProgress, useBenchmarkStatus } from "@/entities/benchmark";
+import { ResultsChart, ResultsTable } from "@/widgets/benchmark-results";
+import {
+  useBenchmarkProgress,
+  useBenchmarkStatus,
+  useBenchmarkResults,
+} from "@/entities/benchmark";
 import { useRunBenchmark } from "@/features/run-benchmark";
 import { Button } from "@/shared/ui/components/ui/button";
 import { Progress } from "@/shared/ui/components/ui/progress";
@@ -10,19 +14,27 @@ import {
   CardTitle,
   CardContent,
 } from "@/shared/ui/components/ui/card";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, BarChart3, Table as TableIcon } from "lucide-react";
 import {
   Alert,
   AlertTitle,
   AlertDescription,
 } from "@/shared/ui/components/ui/alert";
 import { ImgInfo } from "@/widgets/img-info";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/shared/ui/components/ui/tabs";
 
 export const BenchmarkPage = () => {
   const { runBenchmark, cancelBenchmark, hasImage } = useRunBenchmark();
   const progress = useBenchmarkProgress();
   const benchmarkStatus = useBenchmarkStatus();
+  const results = useBenchmarkResults();
   const isRunning = benchmarkStatus === "running";
+  const hasResults = results.length > 0;
 
   const progressPercent =
     progress.total > 0
@@ -98,7 +110,33 @@ export const BenchmarkPage = () => {
         </div>
 
         <div className="md:col-span-8">
-          <ResultsChart />
+          {hasResults && !isRunning ? (
+            <Tabs defaultValue="chart" className="w-full">
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="text-sm font-semibold tracking-tight text-foreground">
+                  Benchmark Results
+                </h4>
+                <TabsList variant="line">
+                  <TabsTrigger value="chart" className="cursor-pointer">
+                    <BarChart3 className="h-3.5 w-3.5" />
+                    Chart
+                  </TabsTrigger>
+                  <TabsTrigger value="table" className="cursor-pointer">
+                    <TableIcon className="h-3.5 w-3.5" />
+                    Table
+                  </TabsTrigger>
+                </TabsList>
+              </div>
+              <TabsContent value="chart" className="mt-0">
+                <ResultsChart />
+              </TabsContent>
+              <TabsContent value="table" className="mt-0">
+                <ResultsTable results={results} />
+              </TabsContent>
+            </Tabs>
+          ) : (
+            <ResultsChart />
+          )}
         </div>
       </div>
     </div>
