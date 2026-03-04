@@ -24,7 +24,7 @@ export const SpeedupBadge = (props: SpeedupBadgeProps) => {
   const safeJs = Math.max(jsTime, 0.1);
 
   const ratioValue = isWasmFaster ? jsTime / safeWasm : wasmTime / safeJs;
-  const ratio = ratioValue.toFixed(1);
+  const ratio = ratioValue.toFixed(2);
 
   if (ratio === "1.0") {
     return (
