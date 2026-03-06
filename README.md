@@ -3,7 +3,7 @@
 [![Live Demo](https://img.shields.io/badge/demo-live-brightgreen)](https://phmshk.github.io/wimage/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**wimage** is a high-performance web application designed to compare the execution speed of image processing algorithms between pure JavaScript and WebAssembly (C). It serves as both a functional image editor and a technical demonstration of modern browser capabilities.
+**wimage** is a web application designed to compare the execution speed of image processing algorithms between pure JavaScript and WebAssembly (C). It serves as both a functional image editor and a technical demonstration of modern browser capabilities.
 
 ## Key Features
 
@@ -71,3 +71,4 @@ bun run wasm
 ```
 
 _Note: This command uses a Dockerized Emscripten environment defined in the `Makefile`._
+
